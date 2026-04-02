@@ -13,6 +13,7 @@
   "dependencies": {
     "@notify/db": "workspace:*",
     "@notify/env": "workspace:*",
+    "@notify/nodemailer": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "zod": "catalog:"
