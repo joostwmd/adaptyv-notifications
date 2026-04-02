@@ -1,0 +1,32 @@
+{
+  "name": "notify",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "check-types": "pnpm -r check-types",
+    "dev:web": "pnpm --filter web dev",
+    "dev:server": "pnpm --filter server dev",
+    "db:push": "pnpm --filter @notify/db db:push",
+    "db:studio": "pnpm --filter @notify/db db:studio",
+    "db:generate": "pnpm --filter @notify/db db:generate",
+    "db:migrate": "pnpm --filter @notify/db db:migrate",
+    "db:local": "pnpm --filter @notify/db db:local"
+  },
+  "dependencies": {
+    "@notify/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@notify/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.23.0"
+}

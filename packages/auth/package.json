@@ -1,0 +1,24 @@
+{
+  "name": "@notify/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@notify/db": "workspace:*",
+    "@notify/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@notify/config": "workspace:*",
+    "typescript": "^5"
+  }
+}
