@@ -6,6 +6,9 @@
   "exports": {
     ".": {
       "default": "./src/index.ts"
+    },
+    "./email-html": {
+      "default": "./src/email-html.ts"
     }
   },
   "dependencies": {
