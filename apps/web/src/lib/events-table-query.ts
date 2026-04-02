@@ -8,12 +8,7 @@ export type EventsListInput = {
   columnFilters: { id: string; value: unknown }[];
 };
 
-const FILTER_IDS = [
-  "experimentCode",
-  "previousStatus",
-  "newStatus",
-  "isTest",
-] as const;
+const FILTER_IDS = ["experimentCode"] as const;
 
 export function parseEventsListInputFromSearch(search: string): EventsListInput {
   const q = search.startsWith("?") ? search.slice(1) : search;

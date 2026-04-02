@@ -154,6 +154,19 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     );
   }, [columns]);
 
+  React.useEffect(() => {
+    setColumnVisibility((prev) => {
+      const keys = Object.keys(prev);
+      const stale = keys.filter((id) => !columnIds.has(id));
+      if (stale.length === 0) return prev;
+      const next = { ...prev };
+      for (const id of stale) {
+        delete next[id];
+      }
+      return next;
+    });
+  }, [columnIds]);
+
   const [sorting, setSorting] = useQueryState(
     sortKey,
     getSortingStateParser<TData>(columnIds)

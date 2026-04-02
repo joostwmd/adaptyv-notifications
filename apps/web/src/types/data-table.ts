@@ -17,6 +17,8 @@ declare module "@tanstack/react-table" {
     range?: [number, number];
     unit?: string;
     icon?: React.FC<React.SVGProps<SVGSVGElement>>;
+    /** When true, omit from the Columns visibility popover */
+    hideFromViewOptions?: boolean;
   }
 }
 

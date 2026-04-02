@@ -29,7 +29,6 @@ const sortColumnMap = {
   experimentCode: webhookEvents.experimentCode,
   previousStatus: webhookEvents.previousStatus,
   newStatus: webhookEvents.newStatus,
-  isTest: webhookEvents.isTest,
 } as const;
 
 function normalizeFilterValues(value: unknown): string[] {
@@ -53,7 +52,7 @@ export const eventsRouter = router({
     }),
 
   list: protectedProcedure.input(eventsListInputSchema).query(async ({ input }) => {
-    const conditions: SQL[] = [];
+    const conditions: SQL[] = [eq(webhookEvents.isTest, false)];
 
     for (const filter of input.columnFilters) {
       const strValues = normalizeFilterValues(filter.value);
@@ -78,17 +77,12 @@ export const eventsRouter = router({
         case "newStatus":
           conditions.push(inArray(webhookEvents.newStatus, strValues));
           break;
-        case "isTest": {
-          const v = strValues[0] === "true";
-          conditions.push(eq(webhookEvents.isTest, v));
-          break;
-        }
         default:
           break;
       }
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
 
     const [countRow] = await db
       .select({ count: count() })
@@ -156,7 +150,6 @@ export const eventsRouter = router({
         previousStatus: r.previousStatus,
         newStatus: r.newStatus,
         rawPayload: r.rawPayload,
-        isTest: r.isTest,
         createdAt: r.createdAt,
         deliveries: statsMap.get(r.id) ?? { sent: 0, failed: 0, pending: 0 },
       })),

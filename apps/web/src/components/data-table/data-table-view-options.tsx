@@ -30,21 +30,37 @@ export function DataTableViewOptions<TData>({
   disabled,
   ...props
 }: DataTableViewOptionsProps<TData>) {
-  const columns = React.useMemo(
-    () =>
-      table
-        .getAllColumns()
-        .filter(
-          (column) =>
-            typeof column.accessorFn !== "undefined" && column.getCanHide(),
-        ),
-    [table],
-  );
+  const columns = React.useMemo(() => {
+    return table.getAllLeafColumns().filter((column) => {
+      if (!column.getCanHide()) return false;
+      if (column.id === "isTest") return false;
+      const def = column.columnDef;
+      if (def.meta?.hideFromViewOptions) return false;
+      const d = def as { accessorFn?: unknown; accessorKey?: unknown };
+      const isDataColumn =
+        typeof d.accessorFn === "function" ||
+        (typeof d.accessorKey === "string" && d.accessorKey.length > 0);
+      return isDataColumn;
+    });
+  }, [table]);
 
   return (
     <Popover>
-      <PopoverTrigger render={<Button aria-label="Toggle columns" role="combobox" variant="outline" size="sm" className="ml-auto hidden h-8 font-normal lg:flex" disabled={disabled} />}><Settings2 className="text-muted-foreground" />View
-                  </PopoverTrigger>
+      <PopoverTrigger
+        render={
+          <Button
+            aria-label="Toggle columns"
+            role="combobox"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 font-normal"
+            disabled={disabled}
+          />
+        }
+      >
+        <Settings2 className="text-muted-foreground" />
+        Columns
+      </PopoverTrigger>
       <PopoverContent className="w-44 p-0" {...props}>
         <Command>
           <CommandInput placeholder="Search columns..." />
