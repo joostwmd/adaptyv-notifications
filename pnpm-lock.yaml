@@ -87,36 +87,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.4
         version: 1.19.12(hono@4.12.10)
-      '@hono/trpc-server':
-        specifier: ^0.4.0
-        version: 0.4.2(@trpc/server@11.16.0(typescript@5.9.3))(hono@4.12.10)
       '@notify/api':
         specifier: workspace:*
         version: link:../../packages/api
-      '@notify/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@notify/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@notify/env':
-        specifier: workspace:*
-        version: link:../../packages/env
-      '@trpc/server':
-        specifier: 'catalog:'
-        version: 11.16.0(typescript@5.9.3)
-      better-auth:
-        specifier: 'catalog:'
-        version: 1.5.5(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@libsql/client@0.15.15)(kysely@0.28.15))(mongodb@7.1.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      dotenv:
-        specifier: 'catalog:'
-        version: 17.4.0
-      hono:
-        specifier: 'catalog:'
-        version: 4.12.10
-      zod:
-        specifier: 'catalog:'
-        version: 4.3.6
     devDependencies:
       '@notify/config':
         specifier: workspace:*
@@ -242,6 +215,9 @@ importers:
 
   packages/api:
     dependencies:
+      '@hono/trpc-server':
+        specifier: ^0.4.0
+        version: 0.4.2(@trpc/server@11.16.0(typescript@5.9.3))(hono@4.12.10)
       '@notify/auth':
         specifier: workspace:*
         version: link:../auth
@@ -260,6 +236,9 @@ importers:
       dotenv:
         specifier: 'catalog:'
         version: 17.4.0
+      hono:
+        specifier: 'catalog:'
+        version: 4.12.10
       zod:
         specifier: 'catalog:'
         version: 4.3.6
@@ -267,9 +246,6 @@ importers:
       '@notify/config':
         specifier: workspace:*
         version: link:../config
-      hono:
-        specifier: 'catalog:'
-        version: 4.12.10
       typescript:
         specifier: ^5
         version: 5.9.3

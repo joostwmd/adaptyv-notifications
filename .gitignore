@@ -49,3 +49,7 @@ coverage
 .cache
 tmp
 temp
+
+# Accidental .js next to .tsx/.ts — TanStack Router indexes both and reports duplicate paths
+apps/web/src/**/*.js
+packages/ui/src/**/*.js

@@ -5,23 +5,27 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./app": {
+      "default": "./src/app.ts"
+    },
     "./*": {
       "default": "./src/*.ts"
     }
   },
   "scripts": {},
   "dependencies": {
+    "@hono/trpc-server": "^0.4.0",
     "@notify/auth": "workspace:*",
     "@notify/db": "workspace:*",
     "@notify/env": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "dotenv": "catalog:",
+    "hono": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@notify/config": "workspace:*",
-    "hono": "catalog:",
     "typescript": "^5"
   }
 }

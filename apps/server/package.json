@@ -11,16 +11,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
-    "@hono/trpc-server": "^0.4.0",
-    "@notify/api": "workspace:*",
-    "@notify/auth": "workspace:*",
-    "@notify/db": "workspace:*",
-    "@notify/env": "workspace:*",
-    "@trpc/server": "catalog:",
-    "better-auth": "catalog:",
-    "dotenv": "catalog:",
-    "hono": "catalog:",
-    "zod": "catalog:"
+    "@notify/api": "workspace:*"
   },
   "devDependencies": {
     "@notify/config": "workspace:*",
