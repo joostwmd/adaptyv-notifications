@@ -16,7 +16,8 @@
     "db:studio": "pnpm --filter @notify/db db:studio",
     "db:generate": "pnpm --filter @notify/db db:generate",
     "db:migrate": "pnpm --filter @notify/db db:migrate",
-    "db:local": "pnpm --filter @notify/db db:local"
+    "db:local": "pnpm --filter @notify/db db:local",
+    "webhook:test": "tsx scripts/emit-webhook.ts"
   },
   "dependencies": {
     "@notify/env": "workspace:*",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@notify/config": "workspace:*",
     "@types/node": "catalog:",
+    "tsx": "^4.19.4",
     "typescript": "^5"
   },
   "packageManager": "pnpm@10.23.0"

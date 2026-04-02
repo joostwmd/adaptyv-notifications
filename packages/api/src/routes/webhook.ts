@@ -1,5 +1,8 @@
 import type { Context } from "hono";
 
+import { db } from "@notify/db";
+import { events } from "@notify/db/schema/events";
+
 import { webhookPayloadSchema } from "../lib/webhook-schema";
 
 export async function webhookHandler(c: Context) {
@@ -18,6 +21,23 @@ export async function webhookHandler(c: Context) {
     );
   }
 
-  // Stub: persist + fan-out in a later phase
+  const data = parsed.data;
+  const experimentCode =
+    data.experiment_code ?? data.experiment?.code ?? null;
+
+  await db.insert(events).values({
+    id: crypto.randomUUID(),
+    experimentId: data.experiment_id,
+    experimentCode,
+    previousStatus: data.previous_status,
+    newStatus: data.new_status,
+    rawPayload: JSON.stringify(body),
+    isTest: false,
+    notifiedSlack: 0,
+    notifiedEmail: 0,
+    notificationError: null,
+    createdAt: new Date().toISOString(),
+  });
+
   return c.json({ ok: true }, 200);
 }
