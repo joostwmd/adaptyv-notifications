@@ -24,13 +24,16 @@ export const DEFAULT_TRIGGER_STATUSES: ExperimentStatus[] = [
   "canceled",
 ];
 
+/** Shared StatusBadge (web UI) chrome; `slackColor` still drives Slack/email attachments. */
+export const statusBadgeClassName = "border-muted-foreground/40 text-muted-foreground";
+
 export const statusMeta: Record<
   ExperimentStatus,
   {
     label: string;
     emoji: string;
     slackColor: string;
-    /** Tailwind classes for shadcn Badge (border accent). */
+    /** Tailwind classes for StatusBadge in the app (uniform muted treatment). */
     badgeClassName: string;
   }
 > = {
@@ -38,61 +41,61 @@ export const statusMeta: Record<
     label: "Draft",
     emoji: "\u{1F4DD}",
     slackColor: "#808080",
-    badgeClassName: "border-muted-foreground/40 text-muted-foreground",
+    badgeClassName: statusBadgeClassName,
   },
   waiting_for_confirmation: {
     label: "Waiting for Confirmation",
     emoji: "\u{23F3}",
     slackColor: "#E8A317",
-    badgeClassName: "border-amber-500/60 text-amber-700 dark:text-amber-400",
+    badgeClassName: statusBadgeClassName,
   },
   quote_sent: {
     label: "Quote Sent",
     emoji: "\u{1F4B0}",
     slackColor: "#3498DB",
-    badgeClassName: "border-sky-500/60 text-sky-700 dark:text-sky-400",
+    badgeClassName: statusBadgeClassName,
   },
   waiting_for_materials: {
     label: "Waiting for Materials",
     emoji: "\u{1F4E6}",
     slackColor: "#E8A317",
-    badgeClassName: "border-amber-500/60 text-amber-700 dark:text-amber-400",
+    badgeClassName: statusBadgeClassName,
   },
   in_queue: {
     label: "In Queue",
     emoji: "\u{1F51C}",
     slackColor: "#E8A317",
-    badgeClassName: "border-amber-500/60 text-amber-700 dark:text-amber-400",
+    badgeClassName: statusBadgeClassName,
   },
   in_production: {
     label: "In Production",
     emoji: "\u{1F9EA}",
     slackColor: "#9B59B6",
-    badgeClassName: "border-violet-500/60 text-violet-700 dark:text-violet-400",
+    badgeClassName: statusBadgeClassName,
   },
   data_analysis: {
     label: "Data Analysis",
     emoji: "\u{1F4CA}",
     slackColor: "#9B59B6",
-    badgeClassName: "border-violet-500/60 text-violet-700 dark:text-violet-400",
+    badgeClassName: statusBadgeClassName,
   },
   in_review: {
     label: "In Review",
     emoji: "\u{1F50D}",
     slackColor: "#9B59B6",
-    badgeClassName: "border-violet-500/60 text-violet-700 dark:text-violet-400",
+    badgeClassName: statusBadgeClassName,
   },
   done: {
     label: "Done",
     emoji: "\u2705",
     slackColor: "#27AE60",
-    badgeClassName: "border-emerald-500/60 text-emerald-700 dark:text-emerald-400",
+    badgeClassName: statusBadgeClassName,
   },
   canceled: {
     label: "Canceled",
     emoji: "\u274C",
     slackColor: "#E74C3C",
-    badgeClassName: "border-red-500/60 text-red-700 dark:text-red-400",
+    badgeClassName: statusBadgeClassName,
   },
 };
 

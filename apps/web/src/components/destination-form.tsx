@@ -223,7 +223,7 @@ export function DestinationFormDialog({
                       checked={selectedStatuses.has(s)}
                       onCheckedChange={() => toggleStatus(s)}
                     />
-                    <StatusBadge status={s} className="text-[10px]" />
+                    <StatusBadge status={s} />
                   </label>
                 ))}
               </div>

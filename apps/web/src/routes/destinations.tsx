@@ -291,7 +291,7 @@ function RouteComponent() {
                         (EXPERIMENT_STATUSES as readonly string[]).includes(s),
                       )
                       .map((s) => (
-                        <StatusBadge key={s} status={s} className="text-[10px]" />
+                        <StatusBadge key={s} status={s} />
                       ))}
                   </div>
                 </div>

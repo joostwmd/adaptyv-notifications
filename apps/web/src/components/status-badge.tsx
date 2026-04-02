@@ -44,14 +44,13 @@ export function StatusBadge({
     <Badge
       variant="outline"
       render={<span />}
-      className={cn("border-l-2 font-normal", m.badgeClassName, className)}
+      className={cn(
+        "h-auto min-h-6 gap-2 px-3 py-1.5 text-xs font-normal leading-none [&_svg]:size-3.5 [&_svg]:shrink-0",
+        m.badgeClassName,
+        className,
+      )}
     >
-      <Icon
-        data-icon="inline-start"
-        className="opacity-90"
-        weight="regular"
-        aria-hidden
-      />
+      <Icon className="opacity-90" weight="regular" aria-hidden />
       {m.label}
     </Badge>
   );
