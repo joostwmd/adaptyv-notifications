@@ -1,104 +1,209 @@
-# notify
+# Notify
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Router, Hono, TRPC, and more.
+**Notify** connects [Adaptyv Foundry](https://foundry.adaptyvbio.com) experiment webhooks to outbound notifications. Today it delivers **email** when an experiment reaches statuses you configure. A small dashboard handles destinations, per-status triggers, inbound webhook history, and per-destination delivery results.
 
-## Features
+The app was bootstrapped with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack); this document focuses on product behavior, deployment, and known limitations.
 
-- **TypeScript** - For type safety and improved developer experience
-- **TanStack Router** - File-based routing with full type safety
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
-- **Hono** - Lightweight, performant server framework
-- **tRPC** - End-to-end type-safe APIs
-- **Node.js** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **SQLite/Turso** - Database engine
-- **Authentication** - Better-Auth
+## Stack
 
-## Getting Started
+| Layer | Technology |
+| --- | --- |
+| Web | React, TanStack Router, Vite (`apps/web`) |
+| API | Hono, tRPC (`apps/server` → `packages/api`) |
+| Data | Drizzle ORM, LibSQL (`packages/db`) |
+| Auth | Better Auth, email OTP (`packages/auth`) |
+| Mail | Nodemailer (`packages/nodemailer`) |
 
-First, install the dependencies:
+## Architecture
+
+Notify is **two deployables**: a Node HTTP API and a static SPA. The browser talks to the API via `VITE_SERVER_URL` (tRPC uses `{VITE_SERVER_URL}/trpc`).
+
+```mermaid
+flowchart LR
+  Foundry[Adaptyv_Foundry]
+  API[Notify_API]
+  DB[(LibSQL)]
+  SMTP[SMTP_provider]
+
+  Foundry -->|"POST /webhook"| API
+  API --> DB
+  API -->|"fan-out email"| SMTP
+```
+
+1. Foundry calls `POST /webhook?token=…` with a JSON body.
+2. The API validates the payload, stores a row in `webhook_events`, and responds.
+3. `fanOutNotifications` runs asynchronously: matching active **email** destinations (by trigger status) get a row in `notify_deliveries` and an SMTP send attempt.
+
+Default dev ports: API **3000**, web **5173**.
+
+## Local development
+
+From `packages/notify`:
 
 ```bash
 pnpm install
 ```
 
-## Database Setup
+### Environment
 
-This project uses SQLite with Drizzle ORM.
+**Server** — create `apps/server/.env` (see [.env.example](.env.example) for a full list). Required variables are validated in [`packages/env/src/server.ts`](packages/env/src/server.ts):
 
-1. Start the local SQLite database (optional):
+- `DATABASE_URL` — LibSQL URL (local file such as `file:./local.db` or a Turso URL).
+- `BETTER_AUTH_SECRET` — at least 32 characters.
+- `BETTER_AUTH_URL` — public base URL of the API (e.g. `http://localhost:3000` locally).
+- `CORS_ORIGIN` — origin of the SPA (e.g. `http://localhost:5173`). Must be a valid URL including scheme.
+- `WEBHOOK_TOKEN` — shared secret for the Foundry webhook query parameter.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — Nodemailer / your provider.
+- `ALLOWED_EMAIL_DOMAINS` — optional, comma-separated; if set, sign-in is restricted to those domains.
+- `NODE_ENV` — optional; defaults to `development`.
 
-```bash
-pnpm run db:local
-```
+**Web** — create `apps/web/.env`:
 
-2. Update your `.env` file in the `apps/server` directory with the appropriate connection details if needed.
+- `VITE_SERVER_URL` — API base URL (e.g. `http://localhost:3000`). No path suffix; the client appends `/trpc`.
 
-3. Apply the schema to your database:
+### Database and run
 
 ```bash
 pnpm run db:push
-```
-
-Then, run the development server:
-
-```bash
 pnpm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+- App: [http://localhost:5173](http://localhost:5173)
+- API: [http://localhost:3000](http://localhost:3000)
+- Health: `GET /health` → `{ "status": "ok" }`
 
-## UI Customization
+### Test webhooks locally
 
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
-
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
-
-### Add more shared components
-
-Run this from the project root to add more primitives to the shared UI package:
+[`scripts/emit-webhook.ts`](scripts/emit-webhook.ts) posts synthetic Foundry-style payloads:
 
 ```bash
-npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
+pnpm webhook:test
+pnpm webhook:test -- --count 5
+pnpm webhook:test -- --lifecycle
 ```
 
-Import shared components like this:
+Requires `WEBHOOK_TOKEN` in `apps/server/.env`. Override base URL with `WEBHOOK_TEST_URL` if needed.
 
-```tsx
-import { Button } from "@notify/ui/components/button";
+## Webhook integration (Foundry)
+
+Configure Foundry’s experiment webhook to:
+
+```http
+POST https://<your-api-host>/webhook?token=<WEBHOOK_TOKEN>
+Content-Type: application/json
 ```
 
-### Add app-specific blocks
+- The token must match `WEBHOOK_TOKEN` (timing-safe comparison). Treat it as a secret and rotate it if it leaks.
+- The dashboard shows the exact URL under **Foundry webhook URL** (tRPC `destinations.webhookUrl`).
 
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
+## Webhook payload (assumed shape)
 
-## Project Structure
+**Adaptyv does not publish an official JSON schema for Foundry experiment webhooks in public product documentation.** Notify validates inbound bodies with an **internal, assumed** Zod schema in [`packages/api/src/lib/webhook-schema.ts`](packages/api/src/lib/webhook-schema.ts). If Foundry’s real payload diverges, webhooks may return `400` with validation errors until the schema is updated.
+
+The schema uses `.passthrough()`, so **extra top-level fields are allowed** and the full JSON is stored in `raw_payload`. That does **not** protect you from breaking changes to required fields or to allowed `previous_status` / `new_status` values.
+
+### Fields the service relies on
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `experiment_id` | Yes | String. |
+| `previous_status` | Yes | Snake_case experiment lifecycle status (see below). |
+| `new_status` | Yes | Same enum as `previous_status`. |
+| `experiment_code` | No | Used for display; fallback from `experiment.code`. |
+| `timestamp` | No | Ignored for persistence logic; may appear in templates. |
+| `name` | No | Optional label. |
+| `experiment` | No | Optional object; may include `id`, `code`, `name`, `status`, `experiment_type`, `results_status`, `experiment_url`, `created_at`. |
+
+### Allowed status values (`previous_status` / `new_status`)
+
+These must match the snake_case values in [`packages/api/src/lib/status-meta.ts`](packages/api/src/lib/status-meta.ts):
+
+`draft`, `waiting_for_confirmation`, `quote_sent`, `waiting_for_materials`, `in_queue`, `in_production`, `data_analysis`, `in_review`, `done`, `canceled`
+
+For development-only examples of the JSON shape, see [`scripts/emit-webhook.ts`](scripts/emit-webhook.ts). **That script is not a guarantee of production Foundry output.**
+
+## Deployment (production)
+
+There is no checked-in Dockerfile or platform-specific config in this repo. Use any host that can run Node for the API and static files for the SPA.
+
+Commands below assume your working directory is `packages/notify` (this package root). Alternatively, `cd apps/server` after build and run `node dist/index.mjs`.
+
+### API (Node)
+
+```bash
+pnpm --filter server build
+node apps/server/dist/index.mjs
+```
+
+- Set **all** server environment variables on the host (same contract as local `apps/server/.env`).
+- Prefer a **remote** `DATABASE_URL` (e.g. Turso) if you run more than one API instance or care about durability; a local file URL is a single-machine solution.
+
+### Web (static)
+
+```bash
+VITE_SERVER_URL=https://api.yourdomain.com pnpm --filter web build
+```
+
+Serve the output from `apps/web/dist` (S3 + CDN, Netlify, Vercel static assets, etc.).
+
+- `VITE_SERVER_URL` must be the **public** API origin (scheme + host, no `/trpc` suffix).
+
+### Auth and HTTPS
+
+Better Auth is configured with `sameSite: "none"` and `secure: true` on cookies. In production, serve both the SPA and the API over **HTTPS**.
+
+### Configuration checklist
+
+| Variable | Should match |
+| --- | --- |
+| `CORS_ORIGIN` | Exact browser origin of the deployed SPA. |
+| `BETTER_AUTH_URL` | Public base URL of the API (where `/api/auth/*` is served). |
+| Foundry webhook URL | Same public API host as `POST /webhook`. |
+
+## Limitations and roadmap
+
+- **Slack** — Destinations can be created as type `slack` and store a Slack incoming webhook URL in the database and UI, but **delivery to Slack is not implemented**. Fan-out only selects `type === "email"` today. Slack support is planned.
+- **Payload contract** — Inbound JSON is **assumed**, not vendor-documented; monitor for Foundry changes and adjust [`webhook-schema.ts`](packages/api/src/lib/webhook-schema.ts) if needed.
+- **Delivery model** — Fan-out runs in-process after the webhook handler returns; there is no separate job queue or retry worker. Email attempts are recorded as `pending` / `sent` / `failed` on `notify_deliveries`.
+
+## Project structure
 
 ```
-notify/
+packages/notify/
 ├── apps/
-│   ├── web/         # Frontend application (React + TanStack Router)
-│   └── server/      # Backend API (Hono, TRPC)
+│   ├── web/              # SPA (Vite, TanStack Router)
+│   └── server/           # Node entry; Hono + tRPC + webhook route
 ├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── api/              # Hono app, tRPC routers, webhook handler, fan-out
+│   ├── auth/             # Better Auth (email OTP)
+│   ├── db/               # Drizzle schema, migrations
+│   ├── env/              # Validated env (server + Vite client)
+│   ├── nodemailer/       # Transactional HTML email + SMTP
+│   └── ui/               # Shared shadcn/ui components
+└── scripts/
+    └── emit-webhook.ts   # Local webhook test harness
 ```
 
-## Available Scripts
+## UI customization
 
-- `pnpm run dev`: Start all applications in development mode
-- `pnpm run build`: Build all applications
-- `pnpm run dev:web`: Start only the web application
-- `pnpm run dev:server`: Start only the server
-- `pnpm run check-types`: Check TypeScript types across all apps
-- `pnpm run db:push`: Push schema changes to database
-- `pnpm run db:generate`: Generate database client/types
-- `pnpm run db:migrate`: Run database migrations
-- `pnpm run db:studio`: Open database studio UI
-- `pnpm run db:local`: Start the local SQLite database
+Shared primitives live in `packages/ui`.
+
+- Tokens and globals: `packages/ui/src/styles/globals.css`
+- Add shadcn primitives to the shared package: `npx shadcn@latest add <components> -c packages/ui`
+- Import: `import { Button } from "@notify/ui/components/button"`
+
+## Available scripts
+
+| Script | Description |
+| --- | --- |
+| `pnpm run dev` | Web + server in dev mode |
+| `pnpm run dev:web` | Web only |
+| `pnpm run dev:server` | Server only |
+| `pnpm run build` | Build all workspace packages/apps |
+| `pnpm run check-types` | Typecheck across the workspace |
+| `pnpm run db:push` | Push Drizzle schema to the database |
+| `pnpm run db:generate` | Generate migrations / client artifacts |
+| `pnpm run db:migrate` | Run migrations |
+| `pnpm run db:studio` | Drizzle Studio |
+| `pnpm run db:local` | Local DB helper (if configured) |
+| `pnpm run webhook:test` | POST synthetic Foundry-style payloads to the API |
