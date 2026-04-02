@@ -2,7 +2,7 @@ import { createDb } from "@notify/db";
 import * as schema from "@notify/db/schema/auth";
 import { env } from "@notify/env/server";
 import { sendMail } from "@notify/nodemailer";
-import { EMAIL_THEME, emailDocument, escapeHtml } from "@notify/nodemailer/email-html";
+import { DASHBOARD_EMAIL_THEME, emailDocumentDashboard, escapeHtml } from "@notify/nodemailer/email-html";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
@@ -41,16 +41,16 @@ export function createAuth() {
           if (type !== "sign-in") {
             return;
           }
-          const t = EMAIL_THEME;
+          const t = DASHBOARD_EMAIL_THEME;
           const bodyHtml = `
             <p style="margin:0 0 16px;font-size:14px;line-height:1.5;color:${t.mutedForeground};">Your sign-in code is:</p>
-            <p style="margin:0 0 20px;padding:14px 18px;background-color:${t.background};border:1px solid ${t.border};border-radius:${t.radiusButton};font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:22px;font-weight:600;letter-spacing:0.18em;color:${t.foreground};text-align:center;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;"><tr><td align="center" bgcolor="${t.codeBackground}" style="padding:14px 18px;background-color:${t.codeBackground};border:1px solid ${t.codeBorder};border-radius:${t.radiusButton};font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:22px;font-weight:600;letter-spacing:0.18em;color:${t.foreground};">
               ${escapeHtml(otp)}
-            </p>
+            </td></tr></table>
             <p style="margin:0;font-size:13px;line-height:1.5;color:${t.mutedForeground};">This code expires in 5 minutes.</p>
           `.trim();
 
-          const html = emailDocument({
+          const html = emailDocumentDashboard({
             heading: "Sign in to Notify",
             preheader: `Your code: ${otp}`,
             bodyHtml,

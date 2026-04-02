@@ -1,12 +1,12 @@
 import { sendMail } from "@notify/nodemailer";
-import { EMAIL_THEME, emailDocument, escapeHtml } from "@notify/nodemailer/email-html";
+import { DASHBOARD_EMAIL_THEME, emailDocumentDashboard, escapeHtml } from "@notify/nodemailer/email-html";
 
 /**
  * Sends a static test email to verify SMTP and the destination address.
  * No experiment or webhook payload data.
  */
 export async function sendTestEmail(to: string, destinationName: string): Promise<void> {
-  const t = EMAIL_THEME;
+  const t = DASHBOARD_EMAIL_THEME;
   const subject = "Test notification from Foundry Notify";
   const safeName = escapeHtml(destinationName);
 
@@ -22,7 +22,7 @@ export async function sendTestEmail(to: string, destinationName: string): Promis
     </p>
   `.trim();
 
-  const html = emailDocument({
+  const html = emailDocumentDashboard({
     heading: "Hello",
     preheader: `Test · ${destinationName}`,
     bodyHtml,

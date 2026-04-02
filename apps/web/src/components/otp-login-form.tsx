@@ -43,7 +43,7 @@ export default function OtpLoginForm() {
 
   useEffect(() => {
     if (sessionData?.user) {
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/events" });
     }
   }, [sessionData, navigate]);
 
@@ -90,7 +90,7 @@ export default function OtpLoginForm() {
         return;
       }
       toast.success("Signed in");
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/events" });
     } finally {
       setVerifying(false);
       verifyLock.current = false;
@@ -109,7 +109,7 @@ export default function OtpLoginForm() {
   }
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-md p-6">
+    <div className="mx-auto mt-10 w-full max-w-md px-4 py-6 sm:px-6">
       <Card>
         <CardHeader>
           <CardTitle>Sign in to Notify</CardTitle>
@@ -119,7 +119,7 @@ export default function OtpLoginForm() {
               : `Enter the code sent to ${email}`}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 sm:space-y-5">
           {step === "email" ? (
             <>
               <div className="space-y-2">
@@ -148,7 +148,7 @@ export default function OtpLoginForm() {
             </>
           ) : (
             <>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2.5">
                 <Label htmlFor="otp">One-time code</Label>
                 <InputOTP
                   id="otp"
@@ -157,7 +157,6 @@ export default function OtpLoginForm() {
                   value={otp}
                   onChange={handleOtpChange}
                   disabled={verifying}
-                  containerClassName="justify-center"
                 >
                   <InputOTPGroup>
                     {Array.from({ length: 6 }, (_, i) => (
@@ -168,17 +167,17 @@ export default function OtpLoginForm() {
               </div>
               <Button
                 type="button"
-                className="w-full"
+                className="h-11 w-full text-sm font-medium motion-safe:transition-colors motion-safe:duration-150"
                 disabled={verifying || otp.length !== 6}
                 onClick={() => void verify(otp)}
               >
                 {verifying ? "Verifying…" : "Verify"}
               </Button>
-              <div className="flex justify-center gap-4">
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 pt-0.5">
                 <Button
                   type="button"
-                  variant="link"
-                  className="text-xs"
+                  variant="ghost"
+                  className="h-auto min-h-11 px-2 py-1.5 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground sm:min-h-9"
                   disabled={sending}
                   onClick={() => void sendCode()}
                 >
@@ -186,8 +185,8 @@ export default function OtpLoginForm() {
                 </Button>
                 <Button
                   type="button"
-                  variant="link"
-                  className="text-xs"
+                  variant="ghost"
+                  className="h-auto min-h-11 px-2 py-1.5 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground sm:min-h-9"
                   onClick={() => {
                     setStep("email");
                     setOtp("");

@@ -60,7 +60,7 @@ export const Route = createFileRoute("/events")({
     const session = await authClient.getSession();
     if (!session.data) {
       redirect({
-        to: "/login",
+        to: "/",
         throw: true,
       });
     }

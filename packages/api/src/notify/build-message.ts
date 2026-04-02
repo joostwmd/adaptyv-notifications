@@ -15,8 +15,6 @@ export interface NotificationMessage {
   newStatus: ExperimentStatus;
   previousStatusLabel: string;
   newStatusLabel: string;
-  previousStatusEmoji: string;
-  newStatusEmoji: string;
   timestamp: string;
 }
 
@@ -61,8 +59,6 @@ export function buildNotificationMessage(event: WebhookEventRow): NotificationMe
     newStatus: next,
     previousStatusLabel: prevMeta.label,
     newStatusLabel: nextMeta.label,
-    previousStatusEmoji: prevMeta.emoji,
-    newStatusEmoji: nextMeta.emoji,
     timestamp,
   };
 }

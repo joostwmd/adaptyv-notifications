@@ -58,7 +58,7 @@ export const Route = createFileRoute("/destinations")({
   beforeLoad: async () => {
     const session = await authClient.getSession();
     if (!session.data) {
-      redirect({ to: "/login", throw: true });
+      redirect({ to: "/", throw: true });
     }
     return { session };
   },

@@ -6,8 +6,8 @@ import { ModeToggle } from "./mode-toggle";
 import UserMenu from "./user-menu";
 
 const NAV_LINKS = [
-  { to: "/destinations" as const, label: "Destinations" },
   { to: "/events" as const, label: "Events" },
+  { to: "/destinations" as const, label: "Destinations" },
 ] as const;
 
 function MainNavLink({ to, label }: { to: string; label: string }) {
