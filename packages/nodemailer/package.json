@@ -1,0 +1,21 @@
+{
+  "name": "@notify/nodemailer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@notify/env": "workspace:*",
+    "nodemailer": "^8.0.4"
+  },
+  "devDependencies": {
+    "@notify/config": "workspace:*",
+    "@types/nodemailer": "^6.4.17",
+    "@types/node": "catalog:",
+    "typescript": "^5"
+  }
+}
