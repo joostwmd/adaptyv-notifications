@@ -1,17 +1,6 @@
 import { z } from "zod";
 
-const experimentStatusSchema = z.enum([
-  "draft",
-  "waiting_for_confirmation",
-  "quote_sent",
-  "waiting_for_materials",
-  "in_queue",
-  "in_production",
-  "data_analysis",
-  "in_review",
-  "done",
-  "canceled",
-]);
+import { experimentStatusSchema } from "./status-meta";
 
 export const webhookPayloadSchema = z
   .object({

@@ -1,6 +1,7 @@
 import { db } from "@notify/db";
-import { events } from "@notify/db/schema/events";
-import { and, asc, count, desc, eq, inArray, like, or, type SQL } from "drizzle-orm";
+import { notifyDeliveries } from "@notify/db/schema/notify-deliveries";
+import { webhookEvents } from "@notify/db/schema/webhook-events";
+import { and, asc, count, desc, eq, inArray, like, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../index";
@@ -23,14 +24,12 @@ export const eventsListInputSchema = z.object({
 });
 
 const sortColumnMap = {
-  createdAt: events.createdAt,
-  experimentId: events.experimentId,
-  experimentCode: events.experimentCode,
-  previousStatus: events.previousStatus,
-  newStatus: events.newStatus,
-  notifiedSlack: events.notifiedSlack,
-  notifiedEmail: events.notifiedEmail,
-  isTest: events.isTest,
+  createdAt: webhookEvents.createdAt,
+  experimentId: webhookEvents.experimentId,
+  experimentCode: webhookEvents.experimentCode,
+  previousStatus: webhookEvents.previousStatus,
+  newStatus: webhookEvents.newStatus,
+  isTest: webhookEvents.isTest,
 } as const;
 
 function normalizeFilterValues(value: unknown): string[] {
@@ -42,6 +41,17 @@ function normalizeFilterValues(value: unknown): string[] {
 }
 
 export const eventsRouter = router({
+  getById: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const [row] = await db
+        .select()
+        .from(webhookEvents)
+        .where(eq(webhookEvents.id, input.id))
+        .limit(1);
+      return row ?? null;
+    }),
+
   list: protectedProcedure.input(eventsListInputSchema).query(async ({ input }) => {
     const conditions: SQL[] = [];
 
@@ -55,29 +65,22 @@ export const eventsRouter = router({
           if (!term) break;
           const pattern = `%${term}%`;
           conditions.push(
-            or(like(events.experimentId, pattern), like(events.experimentCode, pattern))!,
+            or(
+              like(webhookEvents.experimentId, pattern),
+              like(webhookEvents.experimentCode, pattern),
+            )!,
           );
           break;
         }
         case "previousStatus":
-          conditions.push(inArray(events.previousStatus, strValues));
+          conditions.push(inArray(webhookEvents.previousStatus, strValues));
           break;
         case "newStatus":
-          conditions.push(inArray(events.newStatus, strValues));
+          conditions.push(inArray(webhookEvents.newStatus, strValues));
           break;
         case "isTest": {
           const v = strValues[0] === "true";
-          conditions.push(eq(events.isTest, v));
-          break;
-        }
-        case "notifiedSlack": {
-          const n = Number(strValues[0]);
-          if (!Number.isNaN(n)) conditions.push(eq(events.notifiedSlack, n));
-          break;
-        }
-        case "notifiedEmail": {
-          const n = Number(strValues[0]);
-          if (!Number.isNaN(n)) conditions.push(eq(events.notifiedEmail, n));
+          conditions.push(eq(webhookEvents.isTest, v));
           break;
         }
         default:
@@ -87,14 +90,17 @@ export const eventsRouter = router({
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [countRow] = await db.select({ count: count() }).from(events).where(whereClause);
+    const [countRow] = await db
+      .select({ count: count() })
+      .from(webhookEvents)
+      .where(whereClause);
 
     const total = countRow?.count ?? 0;
     const pageCount = Math.max(1, Math.ceil(total / input.pageSize));
 
     const orderByClauses: SQL[] = [];
     if (input.sorting.length === 0) {
-      orderByClauses.push(desc(events.createdAt));
+      orderByClauses.push(desc(webhookEvents.createdAt));
     } else {
       for (const sort of input.sorting) {
         const col = sortColumnMap[sort.id as keyof typeof sortColumnMap];
@@ -104,16 +110,43 @@ export const eventsRouter = router({
       }
     }
     if (orderByClauses.length === 0) {
-      orderByClauses.push(desc(events.createdAt));
+      orderByClauses.push(desc(webhookEvents.createdAt));
     }
 
     const rows = await db
       .select()
-      .from(events)
+      .from(webhookEvents)
       .where(whereClause)
       .orderBy(...orderByClauses)
       .limit(input.pageSize)
       .offset((input.page - 1) * input.pageSize);
+
+    const ids = rows.map((r) => r.id);
+    const statsMap = new Map<
+      string,
+      { sent: number; failed: number; pending: number }
+    >();
+
+    if (ids.length > 0) {
+      const agg = await db
+        .select({
+          webhookEventId: notifyDeliveries.webhookEventId,
+          sent: sql<number>`coalesce(sum(case when ${notifyDeliveries.status} = 'sent' then 1 else 0 end), 0)`,
+          failed: sql<number>`coalesce(sum(case when ${notifyDeliveries.status} = 'failed' then 1 else 0 end), 0)`,
+          pending: sql<number>`coalesce(sum(case when ${notifyDeliveries.status} = 'pending' then 1 else 0 end), 0)`,
+        })
+        .from(notifyDeliveries)
+        .where(inArray(notifyDeliveries.webhookEventId, ids))
+        .groupBy(notifyDeliveries.webhookEventId);
+
+      for (const a of agg) {
+        statsMap.set(a.webhookEventId, {
+          sent: Number(a.sent),
+          failed: Number(a.failed),
+          pending: Number(a.pending),
+        });
+      }
+    }
 
     return {
       data: rows.map((r) => ({
@@ -124,10 +157,8 @@ export const eventsRouter = router({
         newStatus: r.newStatus,
         rawPayload: r.rawPayload,
         isTest: r.isTest,
-        notifiedSlack: r.notifiedSlack,
-        notifiedEmail: r.notifiedEmail,
-        notificationError: r.notificationError,
         createdAt: r.createdAt,
+        deliveries: statsMap.get(r.id) ?? { sent: 0, failed: 0, pending: 0 },
       })),
       pageCount,
       total,

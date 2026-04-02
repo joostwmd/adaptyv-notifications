@@ -242,6 +242,9 @@ importers:
       '@notify/env':
         specifier: workspace:*
         version: link:../env
+      '@notify/nodemailer':
+        specifier: workspace:*
+        version: link:../nodemailer
       '@trpc/client':
         specifier: 'catalog:'
         version: 11.16.0(@trpc/server@11.16.0(typescript@5.9.3))(typescript@5.9.3)

@@ -1,9 +1,10 @@
 import type { Context } from "hono";
 
 import { db } from "@notify/db";
-import { events } from "@notify/db/schema/events";
+import { webhookEvents } from "@notify/db/schema/webhook-events";
 
 import { webhookPayloadSchema } from "../lib/webhook-schema";
+import { fanOutNotifications } from "../notify/fan-out";
 
 export async function webhookHandler(c: Context) {
   let body: unknown;
@@ -25,18 +26,21 @@ export async function webhookHandler(c: Context) {
   const experimentCode =
     data.experiment_code ?? data.experiment?.code ?? null;
 
-  await db.insert(events).values({
-    id: crypto.randomUUID(),
+  const eventId = crypto.randomUUID();
+
+  await db.insert(webhookEvents).values({
+    id: eventId,
     experimentId: data.experiment_id,
     experimentCode,
     previousStatus: data.previous_status,
     newStatus: data.new_status,
     rawPayload: JSON.stringify(body),
     isTest: false,
-    notifiedSlack: 0,
-    notifiedEmail: 0,
-    notificationError: null,
     createdAt: new Date().toISOString(),
+  });
+
+  void fanOutNotifications(eventId).catch((err) => {
+    console.error("[webhook] fan-out error:", err);
   });
 
   return c.json({ ok: true }, 200);

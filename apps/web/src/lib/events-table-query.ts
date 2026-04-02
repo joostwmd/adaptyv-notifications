@@ -13,8 +13,6 @@ const FILTER_IDS = [
   "previousStatus",
   "newStatus",
   "isTest",
-  "notifiedSlack",
-  "notifiedEmail",
 ] as const;
 
 export function parseEventsListInputFromSearch(search: string): EventsListInput {

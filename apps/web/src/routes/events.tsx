@@ -1,15 +1,9 @@
+import { StatusBadge } from "@/components/status-badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import {
-  CalendarIcon,
-  FlaskConical,
-  Mail,
-  MessageSquare,
-  Text,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarIcon, FlaskConical, Text } from "lucide-react";
 import * as React from "react";
 import type { inferRouterOutputs } from "@trpc/server";
 
@@ -28,51 +22,28 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import type { AppRouter } from "@notify/api/routers/index";
+import {
+  EXPERIMENT_STATUSES,
+  statusMeta,
+  type ExperimentStatus,
+} from "@notify/api/lib/status-meta";
 import { Badge } from "@notify/ui/components/badge";
+import { Button } from "@notify/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@notify/ui/components/dialog";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type EventListItem = RouterOutputs["events"]["list"]["data"][number];
 
-const STATUS_OPTIONS: { label: string; value: string }[] = [
-  { label: "Draft", value: "draft" },
-  { label: "Waiting for confirmation", value: "waiting_for_confirmation" },
-  { label: "Quote sent", value: "quote_sent" },
-  { label: "Waiting for materials", value: "waiting_for_materials" },
-  { label: "In queue", value: "in_queue" },
-  { label: "In production", value: "in_production" },
-  { label: "Data analysis", value: "data_analysis" },
-  { label: "In review", value: "in_review" },
-  { label: "Done", value: "done" },
-  { label: "Canceled", value: "canceled" },
-];
-
-const NOTIFY_OPTIONS = [
-  { label: "Pending", value: "0" },
-  { label: "Sent", value: "1" },
-  { label: "Failed", value: "-1" },
-];
-
-function notifyIconState(v: number): "ok" | "fail" | "pending" {
-  if (v === 1) return "ok";
-  if (v === -1) return "fail";
-  return "pending";
-}
-
-function NotifyCell({ value, Icon }: { value: number; Icon: LucideIcon }) {
-  const state = notifyIconState(value);
-  const className =
-    state === "ok"
-      ? "text-emerald-600"
-      : state === "fail"
-        ? "text-destructive"
-        : "text-muted-foreground";
-  return (
-    <span className={`inline-flex items-center gap-1 ${className}`} title={String(value)}>
-      <Icon className="size-4" />
-      {state === "ok" ? "✓" : state === "fail" ? "✗" : "—"}
-    </span>
-  );
-}
+const STATUS_OPTIONS = EXPERIMENT_STATUSES.map((value) => ({
+  value,
+  label: statusMeta[value].label,
+}));
 
 export const Route = createFileRoute("/events")({
   component: RouteComponent,
@@ -88,7 +59,27 @@ export const Route = createFileRoute("/events")({
   },
 });
 
+function deliveriesSummary(d: EventListItem["deliveries"]): string {
+  const parts: string[] = [];
+  if (d.sent) parts.push(`${d.sent} sent`);
+  if (d.failed) parts.push(`${d.failed} failed`);
+  if (d.pending) parts.push(`${d.pending} pending`);
+  return parts.length > 0 ? parts.join(" · ") : "—";
+}
+
 function RouteComponent() {
+  const [detailId, setDetailId] = React.useState<string | null>(null);
+
+  const detailEvent = useQuery({
+    ...trpc.events.getById.queryOptions({ id: detailId! }),
+    enabled: detailId != null,
+  });
+
+  const detailDeliveries = useQuery({
+    ...trpc.deliveries.listByEvent.queryOptions({ webhookEventId: detailId! }),
+    enabled: detailId != null,
+  });
+
   const columns = React.useMemo<ColumnDef<EventListItem>[]>(
     () => [
       {
@@ -139,9 +130,13 @@ function RouteComponent() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="From" />
         ),
-        cell: ({ row }) => (
-          <span className="text-muted-foreground">{row.getValue("previousStatus")}</span>
-        ),
+        cell: ({ row }) => {
+          const s = row.getValue("previousStatus") as string;
+          if ((EXPERIMENT_STATUSES as readonly string[]).includes(s)) {
+            return <StatusBadge status={s as ExperimentStatus} />;
+          }
+          return <span className="text-muted-foreground">{s}</span>;
+        },
         meta: {
           label: "From status",
           variant: "select",
@@ -154,7 +149,13 @@ function RouteComponent() {
         id: "newStatus",
         accessorKey: "newStatus",
         header: ({ column }) => <DataTableColumnHeader column={column} label="To" />,
-        cell: ({ row }) => <span>{row.getValue("newStatus")}</span>,
+        cell: ({ row }) => {
+          const s = row.getValue("newStatus") as string;
+          if ((EXPERIMENT_STATUSES as readonly string[]).includes(s)) {
+            return <StatusBadge status={s as ExperimentStatus} />;
+          }
+          return <span>{s}</span>;
+        },
         meta: {
           label: "To status",
           variant: "select",
@@ -164,38 +165,27 @@ function RouteComponent() {
         enableSorting: true,
       },
       {
-        id: "notifiedSlack",
-        accessorKey: "notifiedSlack",
+        id: "deliveries",
+        accessorFn: (row) => deliveriesSummary(row.deliveries),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} label="Slack" />
+          <DataTableColumnHeader column={column} label="Deliveries" />
         ),
-        cell: ({ row }) => (
-          <NotifyCell value={row.getValue("notifiedSlack")} Icon={MessageSquare} />
-        ),
-        meta: {
-          label: "Slack",
-          variant: "select",
-          options: NOTIFY_OPTIONS,
+        cell: ({ row }) => {
+          const d = row.original.deliveries;
+          const summary = deliveriesSummary(d);
+          const hasIssue = d.failed > 0;
+          return (
+            <span
+              className={
+                hasIssue ? "text-destructive text-sm" : "text-muted-foreground text-sm"
+              }
+            >
+              {summary}
+            </span>
+          );
         },
-        enableColumnFilter: true,
-        enableSorting: true,
-      },
-      {
-        id: "notifiedEmail",
-        accessorKey: "notifiedEmail",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} label="Email" />
-        ),
-        cell: ({ row }) => (
-          <NotifyCell value={row.getValue("notifiedEmail")} Icon={Mail} />
-        ),
-        meta: {
-          label: "Email",
-          variant: "select",
-          options: NOTIFY_OPTIONS,
-        },
-        enableColumnFilter: true,
-        enableSorting: true,
+        meta: { label: "Deliveries" },
+        enableSorting: false,
       },
       {
         id: "isTest",
@@ -216,6 +206,16 @@ function RouteComponent() {
         },
         enableColumnFilter: true,
         enableSorting: true,
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <Button type="button" variant="outline" size="sm" onClick={() => setDetailId(row.original.id)}>
+            Details
+          </Button>
+        ),
+        enableSorting: false,
       },
     ],
     [],
@@ -258,6 +258,17 @@ function RouteComponent() {
     setListInput((prev) => (eventsListInputEquals(prev, next) ? prev : next));
   }, [pageIndex, pageSize, sortingKey, filtersKey, table]);
 
+  const detailPayload = detailEvent.data?.rawPayload;
+
+  const formattedPayload = React.useMemo(() => {
+    if (detailPayload == null) return detailEvent.isFetching ? "…" : "Not found";
+    try {
+      return JSON.stringify(JSON.parse(detailPayload), null, 2);
+    } catch {
+      return detailPayload;
+    }
+  }, [detailPayload, detailEvent.isFetching]);
+
   return (
     <div className="flex flex-col gap-4 p-4">
       <div>
@@ -272,6 +283,48 @@ function RouteComponent() {
           <DataTableViewOptions table={table} />
         </DataTableToolbar>
       </DataTable>
+
+      <Dialog open={detailId != null} onOpenChange={(o) => !o && setDetailId(null)}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Event details</DialogTitle>
+            <DialogDescription>Raw payload and per-destination delivery attempts.</DialogDescription>
+          </DialogHeader>
+          {detailId ? (
+            <div className="grid gap-4 text-xs">
+              <div>
+                <p className="text-muted-foreground mb-1 font-medium">Raw payload</p>
+                <pre className="bg-muted max-h-48 overflow-auto rounded border p-2 font-mono whitespace-pre-wrap">
+                  {formattedPayload}
+                </pre>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1 font-medium">Deliveries</p>
+                {detailDeliveries.isLoading ? (
+                  <p>Loading…</p>
+                ) : detailDeliveries.data?.length === 0 ? (
+                  <p className="text-muted-foreground">No delivery rows (no matching destinations).</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {detailDeliveries.data?.map((d) => (
+                      <li
+                        key={d.id}
+                        className="bg-muted/50 flex flex-col gap-0.5 rounded border px-2 py-1.5"
+                      >
+                        <span className="font-medium">{d.destinationName}</span>
+                        <span className="text-muted-foreground">
+                          {d.channel} · {d.status}
+                          {d.error ? ` · ${d.error}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
