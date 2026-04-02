@@ -19,7 +19,7 @@ function MainNavLink({ to, label }: { to: string; label: string }) {
       to={to}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "inline-flex min-h-9 min-w-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors motion-safe:duration-150",
+        "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-3.5 py-2 text-sm font-medium transition-colors motion-safe:duration-150 sm:min-h-9 sm:min-w-9 sm:px-3 sm:py-1.5",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
         isActive
           ? "bg-muted text-foreground"
@@ -34,13 +34,13 @@ function MainNavLink({ to, label }: { to: string; label: string }) {
 export default function Header() {
   return (
     <header className="bg-background border-border border-b">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-2">
-        <nav className="flex items-center gap-0.5" aria-label="Main">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-3 py-2.5 sm:gap-4 sm:px-5 md:px-6 lg:px-8">
+        <nav className="flex min-w-0 items-center gap-0.5" aria-label="Main">
           {NAV_LINKS.map(({ to, label }) => (
             <MainNavLink key={to} to={to} label={label} />
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <ModeToggle />
           <UserMenu />
         </div>

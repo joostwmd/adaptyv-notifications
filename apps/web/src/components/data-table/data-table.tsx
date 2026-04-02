@@ -29,11 +29,14 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   return (
     <div
-      className={cn("flex w-full flex-col gap-2.5 overflow-auto", className)}
+      className={cn(
+        "flex w-full min-w-0 flex-col gap-3 overflow-auto sm:gap-2.5",
+        className,
+      )}
       {...props}
     >
       {children}
-      <div className="overflow-hidden rounded-lg border">
+      <div className="min-w-0 overflow-x-auto rounded-lg border shadow-sm sm:shadow-none">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -65,7 +68,7 @@ export function DataTable<TData>({
                   data-state={row.getIsSelected() && "selected"}
                   className={
                     onRowClick
-                      ? "cursor-pointer hover:bg-muted/40 focus-visible:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-[state=selected]:hover:bg-muted/50 motion-safe:transition-colors"
+                      ? "min-h-[3rem] cursor-pointer hover:bg-muted/40 focus-visible:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-[state=selected]:hover:bg-muted/50 motion-safe:transition-colors sm:min-h-0"
                       : undefined
                   }
                   tabIndex={onRowClick ? 0 : undefined}

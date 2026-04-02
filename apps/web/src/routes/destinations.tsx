@@ -140,15 +140,19 @@ function RouteComponent() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 pb-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-3 py-4 pb-10 sm:gap-5 sm:px-5 sm:pb-12 md:gap-6 md:px-6 lg:px-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0 space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Destinations</h1>
-          <p className="text-muted-foreground max-w-prose text-sm leading-relaxed">
+        <div className="min-w-0 space-y-1.5 sm:space-y-1">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">Destinations</h1>
+          <p className="text-muted-foreground max-w-prose text-sm leading-relaxed sm:text-sm md:text-base md:leading-relaxed">
             Where to send notifications for experiment status changes.
           </p>
         </div>
-        <Button type="button" className="shrink-0 gap-1.5 self-start sm:self-auto" onClick={openNewDestination}>
+        <Button
+          type="button"
+          className="min-h-11 shrink-0 gap-1.5 self-stretch sm:min-h-9 sm:self-auto"
+          onClick={openNewDestination}
+        >
           <Plus className="size-4" weight="regular" />
           New destination
         </Button>
@@ -180,7 +184,7 @@ function RouteComponent() {
             type="button"
             variant="outline"
             size="sm"
-            className="shrink-0 gap-1.5 sm:self-center"
+            className="min-h-11 shrink-0 gap-1.5 sm:min-h-8 sm:self-center"
             onClick={copyWebhookUrl}
             disabled={!webhookUrlQuery.data || webhookUrlQuery.isLoading}
           >
@@ -223,19 +227,19 @@ function RouteComponent() {
             return (
             <Card key={d.id}>
               <CardHeader className="space-y-0 pb-2">
-                <div className="flex flex-row items-start justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                   <div className="min-w-0 flex-1">
-                    <CardTitle className="truncate text-base leading-snug" title={d.name}>
+                    <CardTitle className="truncate text-base leading-snug sm:text-lg" title={d.name}>
                       {d.name}
                     </CardTitle>
                     <CardDescription
-                      className="mt-1 truncate font-mono text-xs"
+                      className="mt-1 truncate font-mono text-xs sm:text-sm"
                       title={address === "—" || address === "Slack" ? undefined : address}
                     >
                       {address}
                     </CardDescription>
                   </div>
-                  <div className="flex shrink-0 items-center justify-end gap-2">
+                  <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
                     <Status variant={d.status === "active" ? "success" : "warning"}>
                       <StatusIndicator />
                       <StatusLabel>{d.status === "active" ? "Active" : "Paused"}</StatusLabel>
@@ -246,7 +250,7 @@ function RouteComponent() {
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            className="size-9 shrink-0 text-muted-foreground hover:text-foreground sm:size-8"
+                            className="size-11 shrink-0 text-muted-foreground hover:text-foreground sm:size-8"
                             aria-label={`Actions for ${d.name}`}
                           />
                         }

@@ -89,7 +89,7 @@ function SortableHeader<TData>({
       type="button"
       title={titleAttr}
       className={cn(
-        "-ml-1 inline-flex h-8 max-w-full items-center gap-1 rounded-md px-1.5 text-left text-xs font-medium",
+        "-ml-1 inline-flex min-h-11 max-w-full items-center gap-1 rounded-md px-2 py-1 text-left text-xs font-medium sm:min-h-8 sm:px-1.5 sm:py-0",
         "text-foreground hover:bg-muted/50",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
       )}
@@ -243,7 +243,7 @@ function EventPayloadPanel({ content }: { content: string }) {
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0 gap-1.5"
+          className="min-h-10 shrink-0 gap-1.5 sm:min-h-8"
           disabled={!canCopy}
           onClick={handleCopy}
         >
@@ -261,7 +261,7 @@ function EventPayloadPanel({ content }: { content: string }) {
         </Button>
       </div>
       <div className="divide-border overflow-hidden rounded-md border border-border/80">
-        <div className="bg-muted/40 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 dark:bg-muted/25">
+        <div className="bg-muted/40 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5 dark:bg-muted/25 sm:py-2">
           <span className="text-muted-foreground inline-flex items-center gap-1.5 font-mono text-[10px] font-medium tracking-wide uppercase">
             <Code2 className="size-3 opacity-70" aria-hidden />
             JSON
@@ -272,7 +272,7 @@ function EventPayloadPanel({ content }: { content: string }) {
         </div>
         <pre
           className={cn(
-            "bg-muted/20 text-foreground p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap dark:bg-muted/10",
+            "bg-muted/20 text-foreground p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap sm:text-xs md:p-4 dark:bg-muted/10",
             "selection:bg-muted selection:text-foreground",
           )}
         >
@@ -473,10 +473,12 @@ function RouteComponent() {
     "Event";
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 pb-8">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Webhook events</h1>
-        <p className="text-muted-foreground max-w-prose text-sm leading-relaxed">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-3 py-4 pb-10 sm:gap-5 sm:px-5 sm:pb-12 md:gap-6 md:px-6 lg:px-8">
+      <div className="space-y-1.5 sm:space-y-1">
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+          Webhook events
+        </h1>
+        <p className="text-muted-foreground max-w-prose text-sm leading-relaxed sm:text-sm md:text-base md:leading-relaxed">
           {listQuery.data?.total ?? "…"} events · open a row for details · sort columns · filter by
           experiment.
         </p>
@@ -488,7 +490,7 @@ function RouteComponent() {
           setDetailId(row.id);
         }}
       >
-        <DataTableToolbar table={table} className="items-center px-0" />
+        <DataTableToolbar table={table} className="items-stretch px-0 sm:items-start" />
       </DataTable>
 
       <Sheet
@@ -500,11 +502,11 @@ function RouteComponent() {
         <SheetContent
           side="right"
           className={cn(
-            "flex h-full max-h-[100dvh] min-h-0 w-full flex-col gap-0 border-l p-0 sm:max-w-xl",
+            "flex h-full max-h-[100dvh] min-h-0 w-full max-w-[100vw] flex-col gap-0 border-l p-0 sm:max-w-xl",
           )}
         >
-          <SheetHeader className="shrink-0 space-y-1 border-b px-5 py-4 text-left">
-            <SheetTitle className="text-foreground pr-10 font-mono text-lg font-semibold leading-snug">
+          <SheetHeader className="shrink-0 space-y-1 border-b px-4 py-4 text-left pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-4">
+            <SheetTitle className="text-foreground pr-10 font-mono text-base font-semibold leading-snug sm:text-lg">
               {detailEvent.isLoading ? (
                 <Skeleton className="h-6 w-48 max-w-full" />
               ) : detailEvent.isError ? (
@@ -523,9 +525,9 @@ function RouteComponent() {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
             {detailEvent.isLoading ? (
-              <div className="flex flex-col gap-8 p-5 pb-8">
+              <div className="flex flex-col gap-6 p-4 pb-8 sm:gap-8 sm:p-5">
                 <div className="space-y-2">
                   <Skeleton className="h-3 w-16" />
                   <div className="overflow-hidden rounded-md border border-border/80">
@@ -549,7 +551,7 @@ function RouteComponent() {
                 <p className="text-muted-foreground text-xs">Close and try again.</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-8 p-5 pb-10">
+              <div className="flex flex-col gap-6 p-4 pb-10 sm:gap-8 sm:p-5">
                 <EventPayloadPanel key={detailId ?? "closed"} content={formattedPayload} />
                 <section className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-2">
