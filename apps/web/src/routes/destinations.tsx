@@ -130,7 +130,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 pb-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 pb-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Destinations</h1>
