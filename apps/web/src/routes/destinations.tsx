@@ -40,6 +40,7 @@ import {
   BellSimple,
   CopySimple,
   DotsThreeVertical,
+  PaperPlaneTilt,
   Pause,
   PencilSimple,
   Play,
@@ -112,6 +113,15 @@ function RouteComponent() {
       onSuccess: () => {
         void queryClient.invalidateQueries(trpc.destinations.list.queryFilter());
         toast.success("Destination removed");
+      },
+      onError: (e) => toast.error(e.message),
+    }),
+  );
+
+  const sendTestMut = useMutation(
+    trpc.destinations.sendTest.mutationOptions({
+      onSuccess: () => {
+        toast.success("Test email sent");
       },
       onError: (e) => toast.error(e.message),
     }),
@@ -268,6 +278,16 @@ function RouteComponent() {
                             <Play className="size-4" weight="regular" />
                           )}
                           {d.status === "active" ? "Pause" : "Activate"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={
+                            d.type !== "email" ||
+                            (sendTestMut.isPending && sendTestMut.variables?.id === d.id)
+                          }
+                          onClick={() => sendTestMut.mutate({ id: d.id })}
+                        >
+                          <PaperPlaneTilt className="size-4" weight="regular" />
+                          Send test
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem

@@ -2,12 +2,14 @@ import { db } from "@notify/db";
 import { destinationTriggers } from "@notify/db/schema/destination-triggers";
 import { notifyDeliveries } from "@notify/db/schema/notify-deliveries";
 import { notifyDestinations } from "@notify/db/schema/notify-destinations";
+import { webhookEvents } from "@notify/db/schema/webhook-events";
 import { count, eq } from "drizzle-orm";
 import { env } from "@notify/env/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { EXPERIMENT_STATUSES, type ExperimentStatus } from "../lib/status-meta";
+import { sendTestEmail } from "../notify/send-test-email";
 import { protectedProcedure, router } from "../index";
 
 const destinationTypeSchema = z.enum(["email", "slack"]);
@@ -201,6 +203,91 @@ export const destinationsRouter = router({
 
     return { ok: true as const };
   }),
+
+  sendTest: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ input }) => {
+      const [d] = await db
+        .select()
+        .from(notifyDestinations)
+        .where(eq(notifyDestinations.id, input.id))
+        .limit(1);
+
+      if (!d) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Destination not found",
+        });
+      }
+
+      if (d.type !== "email") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Test notifications are only supported for email destinations",
+        });
+      }
+
+      const email = d.recipientEmail?.trim();
+      if (!email) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Email destinations require a recipient address",
+        });
+      }
+
+      const eventId = crypto.randomUUID();
+      const deliveryId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      await db.insert(webhookEvents).values({
+        id: eventId,
+        experimentId: "test",
+        experimentCode: null,
+        previousStatus: "draft",
+        newStatus: "draft",
+        rawPayload: "{}",
+        isTest: true,
+        createdAt: now,
+      });
+
+      await db.insert(notifyDeliveries).values({
+        id: deliveryId,
+        webhookEventId: eventId,
+        destinationId: d.id,
+        channel: "email",
+        status: "pending",
+        error: null,
+        createdAt: now,
+        completedAt: null,
+      });
+
+      try {
+        await sendTestEmail(email, d.name);
+        await db
+          .update(notifyDeliveries)
+          .set({
+            status: "sent",
+            completedAt: new Date().toISOString(),
+          })
+          .where(eq(notifyDeliveries.id, deliveryId));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        await db
+          .update(notifyDeliveries)
+          .set({
+            status: "failed",
+            error: msg.slice(0, 2000),
+            completedAt: new Date().toISOString(),
+          })
+          .where(eq(notifyDeliveries.id, deliveryId));
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: msg.slice(0, 500) || "Failed to send test email",
+        });
+      }
+
+      return { ok: true as const };
+    }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
