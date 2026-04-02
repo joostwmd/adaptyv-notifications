@@ -54,5 +54,3 @@ temp
 apps/web/src/**/*.js
 packages/ui/src/**/*.js
 
-# Database
-local.db

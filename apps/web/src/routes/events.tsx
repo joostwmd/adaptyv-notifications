@@ -89,7 +89,7 @@ function SortableHeader<TData>({
       type="button"
       title={titleAttr}
       className={cn(
-        "-ml-1 inline-flex h-8 max-w-full items-center gap-1 rounded-none px-1.5 text-left text-xs font-medium",
+        "-ml-1 inline-flex h-8 max-w-full items-center gap-1 rounded-md px-1.5 text-left text-xs font-medium",
         "text-foreground hover:bg-muted/50",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
       )}
@@ -529,8 +529,8 @@ function RouteComponent() {
                 <div className="space-y-2">
                   <Skeleton className="h-3 w-16" />
                   <div className="overflow-hidden rounded-md border border-border/80">
-                    <Skeleton className="h-9 w-full rounded-none" />
-                    <Skeleton className="h-40 w-full rounded-none" />
+                    <Skeleton className="h-9 w-full rounded-md" />
+                    <Skeleton className="h-40 w-full rounded-md" />
                   </div>
                 </div>
                 <div className="space-y-2">

@@ -162,14 +162,14 @@ function RouteComponent() {
         <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
           <div className="min-w-0 flex-1">
             {webhookUrlQuery.isLoading ? (
-              <Skeleton className="h-9 w-full rounded-none font-mono" />
+              <Skeleton className="h-9 w-full rounded-md font-mono" />
             ) : webhookUrlQuery.isError ? (
               <p className="text-destructive text-xs leading-relaxed" role="alert">
                 Could not load the webhook URL. Check your connection and refresh the page.
               </p>
             ) : (
               <code
-                className="bg-muted text-muted-foreground block max-w-full overflow-x-auto rounded-none border px-2.5 py-2 font-mono text-xs leading-normal break-all"
+                className="bg-muted text-muted-foreground block max-w-full overflow-x-auto rounded-md border px-2.5 py-2 font-mono text-xs leading-normal break-all"
                 title={webhookUrlQuery.data}
               >
                 {webhookUrlQuery.data}
@@ -202,7 +202,7 @@ function RouteComponent() {
             </CardContent>
           </Card>
         ) : list.length === 0 ? (
-          <Empty className="min-h-[min(280px,45vh)] rounded-none border border-dashed py-8">
+          <Empty className="min-h-[min(280px,45vh)] rounded-lg border border-dashed py-8">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <BellSimple className="size-4" weight="regular" />
