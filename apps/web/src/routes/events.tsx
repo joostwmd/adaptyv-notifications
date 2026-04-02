@@ -193,8 +193,8 @@ function RouteComponent() {
         header: ({ column }) => <DataTableColumnHeader column={column} label="Test" />,
         cell: ({ row }) =>
           row.getValue("isTest") ? (
-            <Badge variant="secondary" className="gap-1">
-              <FlaskConical className="size-3" />
+            <Badge variant="secondary" render={<span />}>
+              <FlaskConical className="size-3" data-icon="inline-start" />
               Test
             </Badge>
           ) : (

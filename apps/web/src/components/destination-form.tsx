@@ -16,6 +16,8 @@ import {
 } from "@notify/ui/components/dialog";
 import { Input } from "@notify/ui/components/input";
 import { Label } from "@notify/ui/components/label";
+import { RadioGroup, RadioGroupItem } from "@notify/ui/components/radio-group";
+import { cn } from "@notify/ui/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { trpc } from "@/utils/trpc";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -39,7 +41,6 @@ export function DestinationFormDialog({
   const [type, setType] = React.useState<"email" | "slack">("email");
   const [recipientEmail, setRecipientEmail] = React.useState("");
   const [slackWebhookUrl, setSlackWebhookUrl] = React.useState("");
-  const [status, setStatus] = React.useState<"active" | "paused">("active");
   const [selectedStatuses, setSelectedStatuses] = React.useState<Set<ExperimentStatus>>(
     () => new Set(DEFAULT_TRIGGER_STATUSES),
   );
@@ -51,7 +52,6 @@ export function DestinationFormDialog({
       setType(editing.type === "slack" ? "slack" : "email");
       setRecipientEmail(editing.recipientEmail ?? "");
       setSlackWebhookUrl(editing.slackWebhookUrl ?? "");
-      setStatus(editing.status === "paused" ? "paused" : "active");
       setSelectedStatuses(
         new Set(
           editing.experimentStatuses.filter((s): s is ExperimentStatus =>
@@ -64,7 +64,6 @@ export function DestinationFormDialog({
       setType("email");
       setRecipientEmail("");
       setSlackWebhookUrl("");
-      setStatus("active");
       setSelectedStatuses(new Set(DEFAULT_TRIGGER_STATUSES));
     }
   }, [open, editing]);
@@ -120,7 +119,7 @@ export function DestinationFormDialog({
         recipientEmail: type === "email" ? recipientEmail : undefined,
         slackWebhookUrl: type === "slack" ? slackWebhookUrl : undefined,
         experimentStatuses,
-        status,
+        status: editing.status === "paused" ? "paused" : "active",
       });
     } else {
       createMut.mutate({
@@ -157,22 +156,37 @@ export function DestinationFormDialog({
               />
             </div>
 
-            <fieldset className="grid gap-2">
-              <legend className="text-xs font-medium">Type</legend>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="dest-type"
-                  checked={type === "email"}
-                  onChange={() => setType("email")}
-                />
-                Email
-              </label>
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <input type="radio" name="dest-type" disabled checked={false} readOnly />
-                Slack (coming soon)
-              </label>
-            </fieldset>
+            <div className="grid gap-2">
+              <div className="text-xs font-medium">Type</div>
+              <RadioGroup
+                value={type}
+                onValueChange={(v) => setType(v as "email" | "slack")}
+                className="grid gap-3"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="email" id="dest-type-email" />
+                  <Label htmlFor="dest-type-email" className="cursor-pointer font-normal text-sm">
+                    Email
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem
+                    value="slack"
+                    id="dest-type-slack"
+                    disabled={editing?.type !== "slack"}
+                  />
+                  <Label
+                    htmlFor="dest-type-slack"
+                    className={cn(
+                      "cursor-pointer font-normal text-sm",
+                      editing?.type !== "slack" && "text-muted-foreground",
+                    )}
+                  >
+                    Slack {editing?.type === "slack" ? "" : "(coming soon)"}
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
 
             {type === "email" ? (
               <div className="grid gap-2">
@@ -199,22 +213,6 @@ export function DestinationFormDialog({
                 />
               </div>
             )}
-
-            {editing ? (
-              <div className="grid gap-2">
-                <Label>Destination status</Label>
-                <select
-                  className="border-input bg-background h-8 border px-2 text-xs"
-                  value={status}
-                  onChange={(ev) =>
-                    setStatus(ev.target.value === "paused" ? "paused" : "active")
-                  }
-                >
-                  <option value="active">Active</option>
-                  <option value="paused">Paused</option>
-                </select>
-              </div>
-            ) : null}
 
             <div className="grid gap-2">
               <Label>Notify when experiment moves to</Label>

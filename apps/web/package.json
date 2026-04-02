@@ -17,6 +17,7 @@
     "@notify/auth": "workspace:*",
     "@notify/env": "workspace:*",
     "@notify/ui": "workspace:*",
+    "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-query": "^5.90.12",
