@@ -39,36 +39,32 @@ services:
       - key: BETTER_AUTH_SECRET
         generateValue: true
 
-      # Public base URL of this API.
-      # Set to: https://notify-api.onrender.com  (or your custom domain)
+      # TODO: replace with https://notify-api.onrender.com after first deploy
       - key: BETTER_AUTH_URL
-        sync: false
+        value: https://notify-api.onrender.com
 
-      # Exact browser origin of the SPA — set this after notify-web is deployed.
-      # Example: https://notify-web.onrender.com
+      # TODO: replace with https://notify-web.onrender.com after first deploy
       - key: CORS_ORIGIN
-        sync: false
+        value: https://notify-web.onrender.com
 
       # ── Webhook ───────────────────────────────────────────────────────────────
       - key: WEBHOOK_TOKEN
         generateValue: true
 
       # ── SMTP (Nodemailer) ─────────────────────────────────────────────────────
-      # Works with Resend, Postmark, Gmail, or any SMTP provider.
+      # TODO: replace with real values when you set up email
       - key: SMTP_HOST
-        sync: false
+        value: smtp.resend.com
       - key: SMTP_PORT
-        sync: false
+        value: 465
       - key: SMTP_USER
-        sync: false
+        value: resend
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
-        sync: false
+        value: noreply@example.com
 
       # ── Optional ──────────────────────────────────────────────────────────────
-      # Comma-separated list of allowed sign-in email domains.
-      # Leave unset to allow any domain.
       - key: ALLOWED_EMAIL_DOMAINS
         sync: false
 
