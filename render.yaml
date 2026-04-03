@@ -75,10 +75,16 @@ services:
         sync: false
 
   # ── Web (React SPA) ──────────────────────────────────────────────────────────
-  - type: static
+  # Static sites in Render Blueprints use type: web with runtime: static.
+  - type: web
+    runtime: static
     name: notify-web
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter web build
     staticPublishPath: apps/web/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       # Points the SPA at the API — auto-populated from notify-api's URL.
       - key: VITE_SERVER_URL
