@@ -1,0 +1,88 @@
+# Render Blueprint — deploys two services from this monorepo:
+#
+#   notify-api   Web Service  (Docker, Hono + tRPC)
+#   notify-web   Static Site  (Vite, React SPA)
+#
+# One-click deploy: https://render.com/deploy?repo=<your-github-url>
+#
+# Manual steps required after first deploy:
+#   1. Set DATABASE_URL to your Turso / remote LibSQL URL in the dashboard.
+#      (A local file URL works for a single instance but is not durable.)
+#   2. Set CORS_ORIGIN to the URL of the deployed notify-web static site.
+#      Render assigns it a URL like https://notify-web.onrender.com — copy
+#      that exact origin (no trailing slash) into notify-api's CORS_ORIGIN.
+#   3. Set all SMTP_* variables so email delivery works.
+#   4. Run the first database migration from the Render Shell (notify-api):
+#        pnpm db:migrate
+#      or via the dashboard one-off job after deployment.
+
+services:
+  # ── API (Hono + tRPC) ────────────────────────────────────────────────────────
+  - type: web
+    name: notify-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # ── Database ─────────────────────────────────────────────────────────────
+      # Set to a remote LibSQL / Turso URL for durability.
+      # Example: libsql://your-db.turso.io
+      - key: DATABASE_URL
+        sync: false
+
+      # ── Auth ─────────────────────────────────────────────────────────────────
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+
+      # Public base URL of this API (auto-populated from this service's URL).
+      - key: BETTER_AUTH_URL
+        fromService:
+          name: notify-api
+          type: web
+          property: hostURL
+
+      # Exact browser origin of the SPA — set this after notify-web is deployed.
+      # Example: https://notify-web.onrender.com
+      - key: CORS_ORIGIN
+        sync: false
+
+      # ── Webhook ───────────────────────────────────────────────────────────────
+      - key: WEBHOOK_TOKEN
+        generateValue: true
+
+      # ── SMTP (Nodemailer) ─────────────────────────────────────────────────────
+      # Works with Resend, Postmark, Gmail, or any SMTP provider.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+      # ── Optional ──────────────────────────────────────────────────────────────
+      # Comma-separated list of allowed sign-in email domains.
+      # Leave unset to allow any domain.
+      - key: ALLOWED_EMAIL_DOMAINS
+        sync: false
+
+  # ── Web (React SPA) ──────────────────────────────────────────────────────────
+  - type: static
+    name: notify-web
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter web build
+    staticPublishPath: apps/web/dist
+    envVars:
+      # Points the SPA at the API — auto-populated from notify-api's URL.
+      - key: VITE_SERVER_URL
+        fromService:
+          name: notify-api
+          type: web
+          property: hostURL
