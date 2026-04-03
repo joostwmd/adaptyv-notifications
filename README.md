@@ -68,6 +68,7 @@ Server variables are validated in [`packages/env/src/server.ts`](packages/env/sr
 
 ## Roadmap
 
+- [ ] **Production database guide (Turso)** — document and wire up Turso as the recommended production database; add `DATABASE_AUTH_TOKEN` support to the env validator and `createClient`, and write a step-by-step migration path from the ephemeral SQLite used during initial deployment.
 - [ ] **Slack (and other channels)** — destinations can include non-email types in the data model; fan-out today only sends **email**. Slack-style webhooks are the next logical step.
 - [ ] **Background jobs and retries** — delivery runs in-process after the webhook responds; a queue-backed worker would improve resilience under load.
 - [ ] **Stronger webhook contract** — optional documentation or fixtures from Adaptyv would reduce guesswork; until then, monitor for payload drift and adjust the Zod schema as needed.
