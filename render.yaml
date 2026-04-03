@@ -39,12 +39,10 @@ services:
       - key: BETTER_AUTH_SECRET
         generateValue: true
 
-      # Public base URL of this API (auto-populated from this service's URL).
+      # Public base URL of this API.
+      # Set to: https://notify-api.onrender.com  (or your custom domain)
       - key: BETTER_AUTH_URL
-        fromService:
-          name: notify-api
-          type: web
-          property: hostURL
+        sync: false
 
       # Exact browser origin of the SPA — set this after notify-web is deployed.
       # Example: https://notify-web.onrender.com
@@ -86,9 +84,7 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      # Points the SPA at the API — auto-populated from notify-api's URL.
+      # Points the SPA at the API.
+      # Set to: https://notify-api.onrender.com  (or your custom domain)
       - key: VITE_SERVER_URL
-        fromService:
-          name: notify-api
-          type: web
-          property: hostURL
+        sync: false
