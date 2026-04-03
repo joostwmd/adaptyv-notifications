@@ -1,67 +1,114 @@
-# Notify
+# Adaptyv Notifications
 
-**Notify** connects [Adaptyv Foundry](https://foundry.adaptyvbio.com) experiment webhooks to outbound notifications. Today it delivers **email** when an experiment reaches statuses you configure. A small dashboard handles destinations, per-status triggers, inbound webhook history, and per-destination delivery results.
+A small **webhook consumer and notification hub** for [Adaptyv Foundry](https://foundry.adaptyvbio.com): point Foundry’s experiment webhooks at your own deployment, and get **email alerts** when experiments move through statuses you care about. A dashboard lets you manage destinations, per-status triggers, inbound webhook history, and delivery results—so you spend less time polling the UI and more time on the science.
 
-The app was bootstrapped with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack); this document focuses on product behavior, deployment, and known limitations.
+The app ships as a **Render-ready pair**: a Node API (Hono + tRPC) and a static React SPA, wired together by the included [Blueprint](render.yml).
 
-## Stack
+> **Not affiliated with or endorsed by Adaptyv Bio.** This is an independent project to make Foundry-style webhook workflows easier for teams who want alerts without building and hosting their own glue service.
 
-| Layer | Technology |
-| --- | --- |
-| Web | React, TanStack Router, Vite (`apps/web`) |
-| API | Hono, tRPC (`apps/server` → `packages/api`) |
-| Data | Drizzle ORM, LibSQL (`packages/db`) |
-| Auth | Better Auth, email OTP (`packages/auth`) |
-| Mail | Nodemailer (`packages/nodemailer`) |
+---
 
-## Architecture
+## Motivation
 
-Notify is **two deployables**: a Node HTTP API and a static SPA. The browser talks to the API via `VITE_SERVER_URL` (tRPC uses `{VITE_SERVER_URL}/trpc`).
+Foundry can send **experiment lifecycle webhooks**, but every team that wants **internal notifications** still has to run something: validate payloads, store events, fan out to email or chat, and give operators a place to configure it. That is repetitive work and easy to get wrong in production (auth, CORS, SMTP, durable storage).
 
-```mermaid
-flowchart LR
-  Foundry[Adaptyv_Foundry]
-  API[Notify_API]
-  DB[(LibSQL)]
-  SMTP[SMTP_provider]
+This project is an **out-of-the-box** answer: one-click deploy, paste your webhook URL into Foundry, configure who gets mail and on which status transitions. No custom server required.
 
-  Foundry -->|"POST /webhook"| API
-  API --> DB
-  API -->|"fan-out email"| SMTP
+Inbound JSON is validated against an **assumed** schema aligned with Foundry-style payloads (see [`packages/api/src/lib/webhook-schema.ts`](packages/api/src/lib/webhook-schema.ts)); if Foundry’s shape changes, update the schema and redeploy.
+
+---
+
+## Deploy your own instance
+
+The recommended path is a one-click **Render** deployment using the included [Blueprint](render.yml).
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/joostwmd/adaptyv-notifications)
+
+Render provisions **`notify-api`** (Docker web service) and **`notify-web`** (static site). `BETTER_AUTH_SECRET`, `WEBHOOK_TOKEN`, `BETTER_AUTH_URL`, and `VITE_SERVER_URL` are wired automatically where possible; complete these **after the first deploy**:
+
+1. **`DATABASE_URL`** (on `notify-api`) — use a remote LibSQL / [Turso](https://turso.tech) URL. A `file:` URL is not durable across redeploys.
+2. **`CORS_ORIGIN`** (on `notify-api`) — exact browser origin of your deployed SPA (e.g. `https://notify-web.onrender.com`), no trailing slash.
+3. **SMTP** (on `notify-api`) — set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` for your provider (Resend, Postmark, etc.).
+4. **Migrate** — in the Render Shell for `notify-api`, run `pnpm db:migrate`.
+
+`GET /health` on the API returns `{ "status": "ok" }` — use it to confirm the service is up.
+
+### Foundry webhook URL
+
+Configure Foundry to POST to:
+
+```http
+POST https://<your-notify-api-host>/webhook?token=<WEBHOOK_TOKEN>
+Content-Type: application/json
 ```
 
-1. Foundry calls `POST /webhook?token=…` with a JSON body.
-2. The API validates the payload, stores a row in `webhook_events`, and responds.
-3. `fanOutNotifications` runs asynchronously: matching active **email** destinations (by trigger status) get a row in `notify_deliveries` and an SMTP send attempt.
+Use the same secret as `WEBHOOK_TOKEN` (timing-safe comparison). The dashboard shows the exact URL once you are signed in.
 
-Default dev ports: API **3000**, web **5173**.
+### Environment variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | Always | LibSQL URL (local file for dev; Turso / remote for production). |
+| `BETTER_AUTH_SECRET` | Always | At least 32 characters. |
+| `BETTER_AUTH_URL` | Always | Public base URL of the API (where `/api/auth` and `/trpc` are served). |
+| `CORS_ORIGIN` | Always | Exact origin of the SPA (scheme + host, no path). |
+| `WEBHOOK_TOKEN` | Always | Secret query param for `POST /webhook`. |
+| `SMTP_HOST` | Always | SMTP hostname. |
+| `SMTP_PORT` | Always | SMTP port (e.g. `465`). |
+| `SMTP_USER` | Always | SMTP username. |
+| `SMTP_PASS` | Always | SMTP password or API key. |
+| `SMTP_FROM` | Always | From address (verified with your provider). |
+| `ALLOWED_EMAIL_DOMAINS` | No | Comma-separated list; if set, sign-in is restricted to those domains. |
+| `NODE_ENV` | No | `development` \| `production` \| `test` (defaults to `development`). |
+| `VITE_SERVER_URL` | Web build | API public origin (no `/trpc` suffix); set on the static site build. |
+
+Server variables are validated in [`packages/env/src/server.ts`](packages/env/src/server.ts). Use [`.env.example`](.env.example) as the template for `apps/server/.env`.
+
+---
+
+## Roadmap
+
+- [ ] **Slack (and other channels)** — destinations can include non-email types in the data model; fan-out today only sends **email**. Slack-style webhooks are the next logical step.
+- [ ] **Background jobs and retries** — delivery runs in-process after the webhook responds; a queue-backed worker would improve resilience under load.
+- [ ] **Stronger webhook contract** — optional documentation or fixtures from Adaptyv would reduce guesswork; until then, monitor for payload drift and adjust the Zod schema as needed.
+
+---
+
+## Also built: Adaptyv Foundry MCP
+
+If you want **AI assistants** (Claude, Cursor, etc.) to query and manage Foundry experiments via **MCP tools**, see the companion project:
+
+**[joostwmd/adaptyv-mcp](https://github.com/joostwmd/adaptyv-mcp)** — Model Context Protocol server for the Foundry API (stdio + Streamable HTTP `/mcp`), with mock mode for local development.
+
+---
+
+## Repository structure
+
+| Path | Description |
+| --- | --- |
+| [`apps/web`](apps/web) | React SPA (Vite, TanStack Router, tRPC client). |
+| [`apps/server`](apps/server) | Node entry: Hono + tRPC + webhook route. |
+| [`packages/api`](packages/api) | HTTP app, routers, webhook handler, notification fan-out. |
+| [`packages/auth`](packages/auth) | Better Auth (email OTP). |
+| [`packages/db`](packages/db) | Drizzle schema and migrations (LibSQL). |
+| [`packages/env`](packages/env) | Validated environment for server and Vite. |
+| [`packages/nodemailer`](packages/nodemailer) | Transactional HTML email via SMTP. |
+| [`packages/ui`](packages/ui) | Shared UI (shadcn-style components). |
+| [`scripts/emit-webhook.ts`](scripts/emit-webhook.ts) | Local synthetic webhook posts for testing. |
+
+Bootstrapped from [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack); behavior and deployment notes above are specific to this product.
+
+---
 
 ## Local development
-
-From `packages/notify`:
 
 ```bash
 pnpm install
 ```
 
-### Environment
+**Server** — copy [`.env.example`](.env.example) to `apps/server/.env` and fill in values.
 
-**Server** — create `apps/server/.env` (see [.env.example](.env.example) for a full list). Required variables are validated in [`packages/env/src/server.ts`](packages/env/src/server.ts):
-
-- `DATABASE_URL` — LibSQL URL (local file such as `file:./local.db` or a Turso URL).
-- `BETTER_AUTH_SECRET` — at least 32 characters.
-- `BETTER_AUTH_URL` — public base URL of the API (e.g. `http://localhost:3000` locally).
-- `CORS_ORIGIN` — origin of the SPA (e.g. `http://localhost:5173`). Must be a valid URL including scheme.
-- `WEBHOOK_TOKEN` — shared secret for the Foundry webhook query parameter.
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — Nodemailer / your provider.
-- `ALLOWED_EMAIL_DOMAINS` — optional, comma-separated; if set, sign-in is restricted to those domains.
-- `NODE_ENV` — optional; defaults to `development`.
-
-**Web** — create `apps/web/.env`:
-
-- `VITE_SERVER_URL` — API base URL (e.g. `http://localhost:3000`). No path suffix; the client appends `/trpc`.
-
-### Database and run
+**Web** — create `apps/web/.env` with `VITE_SERVER_URL=http://localhost:3000` (no path suffix).
 
 ```bash
 pnpm run db:push
@@ -70,11 +117,8 @@ pnpm run dev
 
 - App: [http://localhost:5173](http://localhost:5173)
 - API: [http://localhost:3000](http://localhost:3000)
-- Health: `GET /health` → `{ "status": "ok" }`
 
-### Test webhooks locally
-
-[`scripts/emit-webhook.ts`](scripts/emit-webhook.ts) posts synthetic Foundry-style payloads:
+Test webhooks locally (requires `WEBHOOK_TOKEN` in `apps/server/.env`):
 
 ```bash
 pnpm webhook:test
@@ -82,128 +126,12 @@ pnpm webhook:test -- --count 5
 pnpm webhook:test -- --lifecycle
 ```
 
-Requires `WEBHOOK_TOKEN` in `apps/server/.env`. Override base URL with `WEBHOOK_TEST_URL` if needed.
+Optional: override the target URL with `WEBHOOK_TEST_URL`.
 
-## Webhook integration (Foundry)
+### Production-style builds
 
-Configure Foundry’s experiment webhook to:
+**API:** `pnpm --filter server build` then `node apps/server/dist/index.mjs` (respects `PORT`, default `3000`).
 
-```http
-POST https://<your-api-host>/webhook?token=<WEBHOOK_TOKEN>
-Content-Type: application/json
-```
+**Web:** `VITE_SERVER_URL=https://your-api.example.com pnpm --filter web build` — serve `apps/web/dist` from any static host.
 
-- The token must match `WEBHOOK_TOKEN` (timing-safe comparison). Treat it as a secret and rotate it if it leaks.
-- The dashboard shows the exact URL under **Foundry webhook URL** (tRPC `destinations.webhookUrl`).
-
-## Webhook payload (assumed shape)
-
-**Adaptyv does not publish an official JSON schema for Foundry experiment webhooks in public product documentation.** Notify validates inbound bodies with an **internal, assumed** Zod schema in [`packages/api/src/lib/webhook-schema.ts`](packages/api/src/lib/webhook-schema.ts). If Foundry’s real payload diverges, webhooks may return `400` with validation errors until the schema is updated.
-
-The schema uses `.passthrough()`, so **extra top-level fields are allowed** and the full JSON is stored in `raw_payload`. That does **not** protect you from breaking changes to required fields or to allowed `previous_status` / `new_status` values.
-
-### Fields the service relies on
-
-| Field | Required | Notes |
-| --- | --- | --- |
-| `experiment_id` | Yes | String. |
-| `previous_status` | Yes | Snake_case experiment lifecycle status (see below). |
-| `new_status` | Yes | Same enum as `previous_status`. |
-| `experiment_code` | No | Used for display; fallback from `experiment.code`. |
-| `timestamp` | No | Ignored for persistence logic; may appear in templates. |
-| `name` | No | Optional label. |
-| `experiment` | No | Optional object; may include `id`, `code`, `name`, `status`, `experiment_type`, `results_status`, `experiment_url`, `created_at`. |
-
-### Allowed status values (`previous_status` / `new_status`)
-
-These must match the snake_case values in [`packages/api/src/lib/status-meta.ts`](packages/api/src/lib/status-meta.ts):
-
-`draft`, `waiting_for_confirmation`, `quote_sent`, `waiting_for_materials`, `in_queue`, `in_production`, `data_analysis`, `in_review`, `done`, `canceled`
-
-For development-only examples of the JSON shape, see [`scripts/emit-webhook.ts`](scripts/emit-webhook.ts). **That script is not a guarantee of production Foundry output.**
-
-## Deployment (production)
-
-There is no checked-in Dockerfile or platform-specific config in this repo. Use any host that can run Node for the API and static files for the SPA.
-
-Commands below assume your working directory is `packages/notify` (this package root). Alternatively, `cd apps/server` after build and run `node dist/index.mjs`.
-
-### API (Node)
-
-```bash
-pnpm --filter server build
-node apps/server/dist/index.mjs
-```
-
-- Set **all** server environment variables on the host (same contract as local `apps/server/.env`).
-- Prefer a **remote** `DATABASE_URL` (e.g. Turso) if you run more than one API instance or care about durability; a local file URL is a single-machine solution.
-
-### Web (static)
-
-```bash
-VITE_SERVER_URL=https://api.yourdomain.com pnpm --filter web build
-```
-
-Serve the output from `apps/web/dist` (S3 + CDN, Netlify, Vercel static assets, etc.).
-
-- `VITE_SERVER_URL` must be the **public** API origin (scheme + host, no `/trpc` suffix).
-
-### Auth and HTTPS
-
-Better Auth is configured with `sameSite: "none"` and `secure: true` on cookies. In production, serve both the SPA and the API over **HTTPS**.
-
-### Configuration checklist
-
-| Variable | Should match |
-| --- | --- |
-| `CORS_ORIGIN` | Exact browser origin of the deployed SPA. |
-| `BETTER_AUTH_URL` | Public base URL of the API (where `/api/auth/*` is served). |
-| Foundry webhook URL | Same public API host as `POST /webhook`. |
-
-## Limitations and roadmap
-
-- **Slack** — Destinations can be created as type `slack` and store a Slack incoming webhook URL in the database and UI, but **delivery to Slack is not implemented**. Fan-out only selects `type === "email"` today. Slack support is planned.
-- **Payload contract** — Inbound JSON is **assumed**, not vendor-documented; monitor for Foundry changes and adjust [`webhook-schema.ts`](packages/api/src/lib/webhook-schema.ts) if needed.
-- **Delivery model** — Fan-out runs in-process after the webhook handler returns; there is no separate job queue or retry worker. Email attempts are recorded as `pending` / `sent` / `failed` on `notify_deliveries`.
-
-## Project structure
-
-```
-packages/notify/
-├── apps/
-│   ├── web/              # SPA (Vite, TanStack Router)
-│   └── server/           # Node entry; Hono + tRPC + webhook route
-├── packages/
-│   ├── api/              # Hono app, tRPC routers, webhook handler, fan-out
-│   ├── auth/             # Better Auth (email OTP)
-│   ├── db/               # Drizzle schema, migrations
-│   ├── env/              # Validated env (server + Vite client)
-│   ├── nodemailer/       # Transactional HTML email + SMTP
-│   └── ui/               # Shared shadcn/ui components
-└── scripts/
-    └── emit-webhook.ts   # Local webhook test harness
-```
-
-## UI customization
-
-Shared primitives live in `packages/ui`.
-
-- Tokens and globals: `packages/ui/src/styles/globals.css`
-- Add shadcn primitives to the shared package: `npx shadcn@latest add <components> -c packages/ui`
-- Import: `import { Button } from "@notify/ui/components/button"`
-
-## Available scripts
-
-| Script | Description |
-| --- | --- |
-| `pnpm run dev` | Web + server in dev mode |
-| `pnpm run dev:web` | Web only |
-| `pnpm run dev:server` | Server only |
-| `pnpm run build` | Build all workspace packages/apps |
-| `pnpm run check-types` | Typecheck across the workspace |
-| `pnpm run db:push` | Push Drizzle schema to the database |
-| `pnpm run db:generate` | Generate migrations / client artifacts |
-| `pnpm run db:migrate` | Run migrations |
-| `pnpm run db:studio` | Drizzle Studio |
-| `pnpm run db:local` | Local DB helper (if configured) |
-| `pnpm run webhook:test` | POST synthetic Foundry-style payloads to the API |
+In production, serve **both** the API and the SPA over **HTTPS** (Render does this by default). Better Auth uses `sameSite: "none"` and `secure: true` for cookies in production.
