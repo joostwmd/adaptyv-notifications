@@ -35,7 +35,7 @@ RUN pnpm --filter server build
 
 # pnpm deploy produces a self-contained directory with only production deps.
 # We then overlay the compiled bundle on top.
-RUN pnpm --filter server deploy --prod /prod
+RUN pnpm --filter server deploy --prod --legacy /prod
 RUN cp -r apps/server/dist /prod/dist
 
 # ── Stage 4: runner ───────────────────────────────────────────────────────────
