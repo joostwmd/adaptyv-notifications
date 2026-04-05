@@ -1,5 +1,15 @@
 import { statusMeta, type ExperimentStatus } from "@notify/shared/status-meta";
 
+/** Avoid hanging until the edge proxy returns 502 (Slack or DNS issues). */
+const SLACK_FETCH_TIMEOUT_MS = 15_000;
+
+function slackFetch(url: string, init: Omit<RequestInit, "signal">): Promise<Response> {
+  return fetch(url, {
+    ...init,
+    signal: AbortSignal.timeout(SLACK_FETCH_TIMEOUT_MS),
+  });
+}
+
 export async function postSlackExperimentUpdate(
   webhookUrl: string,
   opts: {
@@ -25,7 +35,7 @@ export async function postSlackExperimentUpdate(
     lines.push(`<${opts.experimentUrl}|View in Foundry>`);
   }
 
-  const res = await fetch(webhookUrl, {
+  const res = await slackFetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -46,7 +56,7 @@ export async function postSlackExperimentUpdate(
 }
 
 export async function postSlackTest(webhookUrl: string): Promise<void> {
-  const res = await fetch(webhookUrl, {
+  const res = await slackFetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

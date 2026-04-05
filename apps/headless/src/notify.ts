@@ -201,33 +201,90 @@ export async function runHeadlessTest(sendMail: SendMailFn): Promise<{
   email: { results: { to: string; ok: boolean; error?: string }[] };
   slack: { results: { url: string; ok: boolean; error?: string }[] };
 }> {
+  console.info("[headless:test] runHeadlessTest start", {
+    emailRecipients: env.EMAIL_RECIPIENTS.length,
+    slackWebhooks: env.SLACK_WEBHOOK_URLS.length,
+    smtpHost: env.SMTP_HOST,
+    smtpPort: env.SMTP_PORT,
+  });
+
+  if (env.EMAIL_RECIPIENTS.length === 0 && env.SLACK_WEBHOOK_URLS.length === 0) {
+    console.warn(
+      "[headless:test] no EMAIL_RECIPIENTS or SLACK_WEBHOOK_URLS — returning immediately (check Render env)",
+    );
+  }
+
   const emailResults: { to: string; ok: boolean; error?: string }[] = [];
+  let i = 0;
   for (const to of env.EMAIL_RECIPIENTS) {
+    i += 1;
+    const t0 = Date.now();
+    console.info("[headless:test] smtp sendMail start", {
+      index: i,
+      total: env.EMAIL_RECIPIENTS.length,
+      toDomain: to.includes("@") ? to.split("@")[1] : "(no @)",
+    });
     try {
       await sendTestEmail(sendMail, to);
+      console.info("[headless:test] smtp sendMail ok", { index: i, ms: Date.now() - t0 });
       emailResults.push({ to, ok: true });
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[headless:test] smtp sendMail fail", {
+        index: i,
+        ms: Date.now() - t0,
+        error: msg,
+      });
       emailResults.push({
         to,
         ok: false,
-        error: e instanceof Error ? e.message : String(e),
+        error: msg,
       });
     }
   }
 
   const slackResults: { url: string; ok: boolean; error?: string }[] = [];
+  let j = 0;
   for (const url of env.SLACK_WEBHOOK_URLS) {
+    j += 1;
+    const t0 = Date.now();
+    let host = "(bad-url)";
+    try {
+      host = new URL(url).host;
+    } catch {
+      /* keep */
+    }
+    console.info("[headless:test] slack POST start", {
+      index: j,
+      total: env.SLACK_WEBHOOK_URLS.length,
+      host,
+    });
     try {
       await postSlackTest(url);
+      console.info("[headless:test] slack POST ok", { index: j, ms: Date.now() - t0, host });
       slackResults.push({ url, ok: true });
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[headless:test] slack POST fail", {
+        index: j,
+        ms: Date.now() - t0,
+        host,
+        error: msg,
+      });
       slackResults.push({
         url,
         ok: false,
-        error: e instanceof Error ? e.message : String(e),
+        error: msg,
       });
     }
   }
+
+  console.info("[headless:test] runHeadlessTest done", {
+    emailOk: emailResults.filter((r) => r.ok).length,
+    emailFail: emailResults.filter((r) => !r.ok).length,
+    slackOk: slackResults.filter((r) => r.ok).length,
+    slackFail: slackResults.filter((r) => !r.ok).length,
+  });
 
   return { email: { results: emailResults }, slack: { results: slackResults } };
 }

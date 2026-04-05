@@ -45,6 +45,10 @@ Verify setup:
 GET https://<your-notify-headless-host>/test?token=<WEBHOOK_TOKEN>
 ```
 
+### If `/test` spins or returns 502 (e.g. on Render)
+
+Check **Render → service → Logs**. The server prints **`[headless:test]`** lines for each step (SMTP host/port, per-recipient `sendMail`, Slack webhook host, durations). A **502** often means the edge proxy gave up while **SMTP was still connecting** (wrong host/port/TLS, provider blocking datacenter IPs) or the handler ran too long. Outbound **Slack** requests abort after **15s**; **SMTP** uses Nodemailer defaults of about **15s connection** and **25s socket** (see [`packages/nodemailer/src/mailer.ts`](packages/nodemailer/src/mailer.ts)) so the route should finish or fail within that window instead of hanging indefinitely.
+
 ---
 
 ## Dashboard variant (experimental)

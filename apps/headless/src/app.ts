@@ -49,8 +49,28 @@ app.post("/webhook", webhookAuth, async (c) => {
 });
 
 app.get("/test", webhookAuth, async (c) => {
-  const report = await runHeadlessTest(mailer.sendMail);
-  return c.json({ ok: true, report });
+  const started = Date.now();
+  console.info("[headless:test] GET /test (after auth)", {
+    emailRecipients: env.EMAIL_RECIPIENTS.length,
+    slackWebhooks: env.SLACK_WEBHOOK_URLS.length,
+    smtpHost: env.SMTP_HOST,
+    smtpPort: env.SMTP_PORT,
+  });
+  try {
+    const report = await runHeadlessTest(mailer.sendMail);
+    console.info("[headless:test] GET /test response", {
+      ms: Date.now() - started,
+      emailAttempts: report.email.results.length,
+      slackAttempts: report.slack.results.length,
+    });
+    return c.json({ ok: true, report });
+  } catch (err) {
+    console.error("[headless:test] GET /test threw", {
+      ms: Date.now() - started,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 });
 
 app.onError((err, c) => {

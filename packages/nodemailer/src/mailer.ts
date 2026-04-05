@@ -6,6 +6,10 @@ export type SmtpConfig = {
   user: string;
   pass: string;
   from: string;
+  /** Nodemailer timeouts (ms). Defaults avoid hanging forever behind misconfigured SMTP/firewalls. */
+  connectionTimeoutMs?: number;
+  greetingTimeoutMs?: number;
+  socketTimeoutMs?: number;
 };
 
 export type SendMailInput = {
@@ -16,6 +20,10 @@ export type SendMailInput = {
 };
 
 export function createMailer(config: SmtpConfig) {
+  const connectionTimeout = config.connectionTimeoutMs ?? 15_000;
+  const greetingTimeout = config.greetingTimeoutMs ?? 10_000;
+  const socketTimeout = config.socketTimeoutMs ?? 25_000;
+
   const transporter = nodemailer.createTransport({
     host: config.host,
     port: config.port,
@@ -24,6 +32,9 @@ export function createMailer(config: SmtpConfig) {
       user: config.user,
       pass: config.pass,
     },
+    connectionTimeout,
+    greetingTimeout,
+    socketTimeout,
   });
 
   async function sendMail(input: SendMailInput) {
