@@ -9,6 +9,9 @@
     },
     "./email-html": {
       "default": "./src/email-html.ts"
+    },
+    "./mailer": {
+      "default": "./src/mailer.ts"
     }
   },
   "dependencies": {

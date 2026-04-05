@@ -1,5 +1,6 @@
 packages:
-  - apps/*
+  - apps/dashboard/*
+  - apps/headless
   - packages/*
 
 catalog:

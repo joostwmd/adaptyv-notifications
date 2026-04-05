@@ -1,0 +1,26 @@
+{
+  "name": "headless",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsdown",
+    "check-types": "tsc -b",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.mjs"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@notify/env": "workspace:*",
+    "@notify/nodemailer": "workspace:*",
+    "@notify/shared": "workspace:*",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@notify/config": "workspace:*",
+    "@types/node": "catalog:",
+    "tsdown": "^0.16.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}

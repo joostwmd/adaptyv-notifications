@@ -21,7 +21,7 @@ services:
   - type: web
     name: notify-api
     runtime: docker
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./apps/dashboard/Dockerfile
     dockerContext: .
     plan: free
     healthCheckPath: /health
@@ -74,7 +74,7 @@ services:
     runtime: static
     name: notify-web
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter web build
-    staticPublishPath: apps/web/dist
+    staticPublishPath: apps/dashboard/web/dist
     routes:
       - type: rewrite
         source: /*

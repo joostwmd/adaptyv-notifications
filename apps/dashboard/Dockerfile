@@ -11,14 +11,16 @@ FROM base AS deps
 WORKDIR /app
 
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
-COPY apps/server/package.json    apps/server/package.json
-COPY apps/web/package.json       apps/web/package.json
+COPY apps/dashboard/server/package.json    apps/dashboard/server/package.json
+COPY apps/dashboard/web/package.json       apps/dashboard/web/package.json
+COPY apps/headless/package.json            apps/headless/package.json
 COPY packages/api/package.json   packages/api/package.json
 COPY packages/auth/package.json  packages/auth/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/db/package.json    packages/db/package.json
 COPY packages/env/package.json   packages/env/package.json
 COPY packages/nodemailer/package.json packages/nodemailer/package.json
+COPY packages/shared/package.json packages/shared/package.json
 COPY packages/ui/package.json    packages/ui/package.json
 
 RUN pnpm install --frozen-lockfile
@@ -36,7 +38,7 @@ RUN pnpm --filter server build
 # pnpm deploy produces a self-contained directory with only production deps.
 # We then overlay the compiled bundle on top.
 RUN pnpm --filter server deploy --prod --legacy /prod
-RUN cp -r apps/server/dist /prod/dist
+RUN cp -r apps/dashboard/server/dist /prod/dist
 
 # ── Stage 4: runner ───────────────────────────────────────────────────────────
 # Minimal production image — no dev tooling, no source files.

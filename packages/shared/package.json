@@ -1,0 +1,35 @@
+{
+  "name": "@notify/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./status-meta": {
+      "default": "./src/status-meta.ts"
+    },
+    "./webhook-schema": {
+      "default": "./src/webhook-schema.ts"
+    },
+    "./types": {
+      "default": "./src/types.ts"
+    },
+    "./webhook-auth": {
+      "default": "./src/webhook-auth.ts"
+    }
+  },
+  "dependencies": {
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@notify/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "^5"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  }
+}

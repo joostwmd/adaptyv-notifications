@@ -1,22 +1,12 @@
 import type { WebhookEventRow } from "@notify/db/schema/webhook-events";
 
+import type { NotificationMessage } from "@notify/shared/types";
 import {
-  type ExperimentStatus,
   isExperimentStatus,
   statusMeta,
 } from "../lib/status-meta";
 
-export interface NotificationMessage {
-  experimentCode: string | null;
-  experimentId: string;
-  experimentName: string | null;
-  experimentUrl: string | null;
-  previousStatus: ExperimentStatus;
-  newStatus: ExperimentStatus;
-  previousStatusLabel: string;
-  newStatusLabel: string;
-  timestamp: string;
-}
+export type { NotificationMessage };
 
 interface ParsedPayload {
   timestamp?: string;

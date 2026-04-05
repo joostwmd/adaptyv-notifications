@@ -2,7 +2,8 @@
   "name": "notify",
   "private": true,
   "workspaces": [
-    "apps/*",
+    "apps/dashboard/*",
+    "apps/headless",
     "packages/*"
   ],
   "type": "module",
@@ -17,7 +18,8 @@
     "db:generate": "pnpm --filter @notify/db db:generate",
     "db:migrate": "pnpm --filter @notify/db db:migrate",
     "db:local": "pnpm --filter @notify/db db:local",
-    "webhook:test": "tsx scripts/emit-webhook.ts"
+    "webhook:test": "tsx scripts/emit-webhook.ts",
+    "dev:headless": "pnpm --filter headless dev"
   },
   "dependencies": {
     "@notify/env": "workspace:*",

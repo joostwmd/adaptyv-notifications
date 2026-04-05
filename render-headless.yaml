@@ -1,0 +1,37 @@
+# Headless Notify — single web service, no database, env-only configuration.
+#
+# Deploy: use the "Deploy to Render" button in README, then set Blueprint path to
+# this file: render-headless.yaml (Render defaults to render.yaml if omitted).
+#
+# After deploy: set EMAIL_RECIPIENTS and/or SLACK_WEBHOOK_URLS, SMTP_*, and tune
+# SUBSCRIBE_STATUSES. Test with GET /test?token=<WEBHOOK_TOKEN>.
+
+services:
+  - type: web
+    name: notify-headless
+    runtime: docker
+    dockerfilePath: ./apps/headless/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WEBHOOK_TOKEN
+        generateValue: true
+      - key: SUBSCRIBE_STATUSES
+        value: quote_sent,done,canceled
+      - key: EMAIL_RECIPIENTS
+        sync: false
+      - key: SLACK_WEBHOOK_URLS
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.resend.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        value: resend
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        value: noreply@example.com

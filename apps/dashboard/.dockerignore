@@ -1,0 +1,36 @@
+# Monorepo build context is the repo root (dockerContext: .).
+# Docker only reads .dockerignore from that root, so the repo has
+# .dockerignore -> apps/dashboard/.dockerignore (symlink).
+
+# Version control
+.git
+.gitignore
+
+# Dependencies (installed inside the container)
+**/node_modules
+
+# Compiled outputs (rebuilt inside the container)
+apps/*/dist
+apps/*/*/dist
+packages/*/dist
+
+# Local databases
+local.db
+*.local.db
+
+# Environment files
+.env
+apps/dashboard/server/.env
+apps/dashboard/web/.env
+apps/headless/.env
+
+# Editor / OS
+.cursor
+.vscode
+.DS_Store
+
+# Logs
+pnpm-debug.log*
+
+# Test / scripts (not needed at runtime)
+scripts/

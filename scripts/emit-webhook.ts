@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-config({ path: path.resolve(__dirname, "../apps/server/.env") });
+config({ path: path.resolve(__dirname, "../apps/dashboard/server/.env") });
 
 const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
 const BASE_URL = process.env.WEBHOOK_TEST_URL ?? "http://localhost:3000";
@@ -130,7 +130,7 @@ function sleep(ms: number) {
 
 async function main() {
   if (!WEBHOOK_TOKEN) {
-    console.error("Missing WEBHOOK_TOKEN in apps/server/.env");
+    console.error("Missing WEBHOOK_TOKEN in apps/dashboard/server/.env");
     process.exit(1);
   }
 

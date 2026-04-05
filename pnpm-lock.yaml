@@ -85,18 +85,18 @@ importers:
         specifier: ^5
         version: 5.9.3
 
-  apps/server:
+  apps/dashboard/server:
     dependencies:
       '@hono/node-server':
         specifier: ^1.14.4
         version: 1.19.12(hono@4.12.10)
       '@notify/api':
         specifier: workspace:*
-        version: link:../../packages/api
+        version: link:../../../packages/api
     devDependencies:
       '@notify/config':
         specifier: workspace:*
-        version: link:../../packages/config
+        version: link:../../../packages/config
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.15
@@ -110,7 +110,7 @@ importers:
         specifier: ^5
         version: 5.9.3
 
-  apps/web:
+  apps/dashboard/web:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.1.1
@@ -120,16 +120,16 @@ importers:
         version: 0.15.15
       '@notify/api':
         specifier: workspace:*
-        version: link:../../packages/api
+        version: link:../../../packages/api
       '@notify/auth':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../../../packages/auth
       '@notify/env':
         specifier: workspace:*
-        version: link:../../packages/env
+        version: link:../../../packages/env
       '@notify/ui':
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../../../packages/ui
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -196,7 +196,7 @@ importers:
     devDependencies:
       '@notify/config':
         specifier: workspace:*
-        version: link:../../packages/config
+        version: link:../../../packages/config
       '@tanstack/react-query-devtools':
         specifier: ^5.91.1
         version: 5.96.1(@tanstack/react-query@5.96.1(react@19.2.4))(react@19.2.4)
@@ -231,6 +231,43 @@ importers:
         specifier: ^6.2.2
         version: 6.4.1(@types/node@22.19.15)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)
 
+  apps/headless:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.14.4
+        version: 1.19.12(hono@4.12.10)
+      '@notify/env':
+        specifier: workspace:*
+        version: link:../../packages/env
+      '@notify/nodemailer':
+        specifier: workspace:*
+        version: link:../../packages/nodemailer
+      '@notify/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      hono:
+        specifier: 'catalog:'
+        version: 4.12.10
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
+    devDependencies:
+      '@notify/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.15
+      tsdown:
+        specifier: ^0.16.5
+        version: 0.16.8(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   packages/api:
     dependencies:
       '@hono/trpc-server':
@@ -248,6 +285,9 @@ importers:
       '@notify/nodemailer':
         specifier: workspace:*
         version: link:../nodemailer
+      '@notify/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@trpc/client':
         specifier: 'catalog:'
         version: 11.16.0(@trpc/server@11.16.0(typescript@5.9.3))(typescript@5.9.3)
@@ -337,6 +377,9 @@ importers:
 
   packages/env:
     dependencies:
+      '@notify/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@t3-oss/env-core':
         specifier: ^0.13.1
         version: 0.13.11(typescript@5.9.3)(zod@4.3.6)
@@ -375,6 +418,25 @@ importers:
       '@types/nodemailer':
         specifier: ^6.4.17
         version: 6.4.23
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/shared:
+    dependencies:
+      hono:
+        specifier: 'catalog:'
+        version: 4.12.10
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
+    devDependencies:
+      '@notify/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.15
       typescript:
         specifier: ^5
         version: 5.9.3
