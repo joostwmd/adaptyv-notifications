@@ -24,13 +24,13 @@ The **headless** service is a single Node process configured entirely with **env
 - **No persistence** — incoming webhooks are **not stored**; there is **no event log** and **no delivery log**.
 - **Limited observability** — with no record of deliveries, **error tracing and debugging** are harder (check provider logs, SMTP bounces, and Slack webhook responses only).
 
-Configuration is validated in [`packages/env/src/headless.ts`](packages/env/src/headless.ts). Example env: [`apps/headless/.env.example`](apps/headless/.env.example) (if present) or the headless section in [`.env.example`](.env.example).
+Configuration is validated in [`packages/env/src/headless.ts`](packages/env/src/headless.ts). Local template: [`apps/headless/.env.example`](apps/headless/.env.example). [`render-headless.yaml`](render-headless.yaml) lists the same variables with `sync: false` so Render asks for them when you deploy the blueprint.
 
 ### Deploy headless to Render (one click)
 
 [![Deploy headless to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/joostwmd/adaptyv-notifications)
 
-**Important:** After you connect the repo, Render defaults to the root **`render.yaml`** (dashboard stack). For headless, set **Blueprint path** to **`render-headless.yaml`** on the Blueprint setup screen ([docs: custom blueprint path](https://render.com/docs/infrastructure-as-code#setup)). Then finish the deploy and set `EMAIL_RECIPIENTS` / `SLACK_WEBHOOK_URLS`, `SMTP_*`, etc., as in [`render-headless.yaml`](render-headless.yaml).
+**Important:** After you connect the repo, Render defaults to the root **`render.yaml`** (dashboard stack). For headless, set **Blueprint path** to **`render-headless.yaml`** on the Blueprint setup screen ([docs: custom blueprint path](https://render.com/docs/infrastructure-as-code#setup)). You will be prompted for each variable in that file (same set as [`apps/headless/.env.example`](apps/headless/.env.example)). Optional `EMAIL_RECIPIENTS` / `SLACK_WEBHOOK_URLS` can be left empty in the dashboard if you only use the other channel.
 
 ### Foundry webhook URL (headless)
 

@@ -1,10 +1,15 @@
 # Headless Notify — single web service, no database, env-only configuration.
 #
-# Deploy: use the "Deploy to Render" button in README, then set Blueprint path to
-# this file: render-headless.yaml (Render defaults to render.yaml if omitted).
+# Deploy: README "Deploy headless" button, then set Blueprint path to render-headless.yaml.
 #
-# After deploy: set EMAIL_RECIPIENTS and/or SLACK_WEBHOOK_URLS, SMTP_*, and tune
-# SUBSCRIBE_STATUSES. Test with GET /test?token=<WEBHOOK_TOKEN>.
+# All application env vars use sync: false so Render prompts for them when you apply
+# the blueprint (same keys as apps/headless/.env.example).
+#
+# Optional: EMAIL_RECIPIENTS and SLACK_WEBHOOK_URLS — leave blank if unused.
+# Note: packages/env/src/headless.ts still requires SMTP_* even for Slack-only runs;
+# use a placeholder provider or we can relax the schema in a follow-up.
+#
+# PORT is injected by Render automatically.
 
 services:
   - type: web
@@ -17,21 +22,28 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+
+      # ── Webhook + subscription (required) ───────────────────────────────────
       - key: WEBHOOK_TOKEN
-        generateValue: true
+        sync: false
       - key: SUBSCRIBE_STATUSES
-        value: quote_sent,done,canceled
+        sync: false
+
+      # ── Destinations (optional — leave empty in dashboard if unused) ────────
+      # Headless treats missing/empty as no email / no Slack.
       - key: EMAIL_RECIPIENTS
         sync: false
       - key: SLACK_WEBHOOK_URLS
         sync: false
+
+      # ── SMTP (required by env schema — set real values for your provider) ───
       - key: SMTP_HOST
-        value: smtp.resend.com
+        sync: false
       - key: SMTP_PORT
-        value: "465"
+        sync: false
       - key: SMTP_USER
-        value: resend
+        sync: false
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
-        value: noreply@example.com
+        sync: false
