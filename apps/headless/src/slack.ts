@@ -10,6 +10,24 @@ function slackFetch(url: string, init: Omit<RequestInit, "signal">): Promise<Res
   });
 }
 
+/** Slack mrkdwn-sensitive characters in user-provided strings (avoid broken formatting). */
+function slackEscapePlain(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function formatHumanTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export async function postSlackExperimentUpdate(
   webhookUrl: string,
   opts: {
@@ -24,16 +42,18 @@ export async function postSlackExperimentUpdate(
   const prevLabel = statusMeta[opts.previousStatus].label;
   const nextLabel = statusMeta[opts.newStatus].label;
   const color = statusMeta[opts.newStatus].slackColor.replace(/^#/, "");
-  const title = opts.experimentName?.trim()
-    ? opts.experimentName
-    : opts.experimentCodeOrId;
-  const lines = [
-    `*${prevLabel}* → *${nextLabel}*`,
-    `_${opts.timestamp}_`,
-  ];
-  if (opts.experimentUrl) {
-    lines.push(`<${opts.experimentUrl}|View in Foundry>`);
-  }
+  const idLine = `*ID:* \`${slackEscapePlain(opts.experimentCodeOrId)}\``;
+  const nameRaw = opts.experimentName?.trim();
+  const nameLine = nameRaw
+    ? `*Name:* ${slackEscapePlain(nameRaw)}`
+    : "*Name:* —";
+  const statusLine = `*Status:* ${slackEscapePlain(prevLabel)} → ${slackEscapePlain(nextLabel)}`;
+  const whenLine = `*When:* ${slackEscapePlain(formatHumanTime(opts.timestamp))}`;
+  const linkLine = opts.experimentUrl
+    ? `<${opts.experimentUrl}|View in Foundry>`
+    : null;
+
+  const text = [idLine, nameLine, statusLine, whenLine, linkLine].filter(Boolean).join("\n");
 
   const res = await slackFetch(webhookUrl, {
     method: "POST",
@@ -42,8 +62,8 @@ export async function postSlackExperimentUpdate(
       attachments: [
         {
           color,
-          title,
-          text: lines.join("\n"),
+          title: "Experiment status updated",
+          text,
         },
       ],
     }),
