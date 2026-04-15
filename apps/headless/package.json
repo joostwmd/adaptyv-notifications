@@ -14,6 +14,7 @@
     "@notify/nodemailer": "workspace:*",
     "@notify/shared": "workspace:*",
     "hono": "catalog:",
+    "use-email": "^0.0.10",
     "zod": "catalog:"
   },
   "devDependencies": {

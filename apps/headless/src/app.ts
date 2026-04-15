@@ -1,19 +1,35 @@
 import { env } from "@notify/env/headless";
-import { createMailer } from "@notify/nodemailer/mailer";
+import type { SendMailInput } from "@notify/nodemailer/mailer";
 import { createWebhookAuth } from "@notify/shared/webhook-auth";
 import { webhookPayloadSchema } from "@notify/shared/webhook-schema";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { useEmail } from "use-email";
 
 import { fanOutHeadless, runHeadlessTest } from "./notify";
+import { applyUseEmailEnvBridge } from "./use-email-env-bridge";
 
-const mailer = createMailer({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  user: env.SMTP_USER,
-  pass: env.SMTP_PASS,
-  from: env.SMTP_FROM,
-});
+function createHeadlessSendMail(): (input: SendMailInput) => Promise<unknown> {
+  if (env.EMAIL_RECIPIENTS.length === 0) {
+    return async () => {
+      throw new Error("sendMail called but EMAIL_RECIPIENTS is empty");
+    };
+  }
+
+  applyUseEmailEnvBridge(env.EMAIL_PROVIDER!, env.EMAIL_PROVIDER_KEY!);
+  const service = useEmail(env.EMAIL_PROVIDER!);
+
+  return (input) =>
+    service.send({
+      from: env.EMAIL_FROM!,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      ...(input.text !== undefined ? { text: input.text } : {}),
+    });
+}
+
+const sendMail = createHeadlessSendMail();
 
 const webhookAuth = createWebhookAuth(env.WEBHOOK_TOKEN);
 
@@ -44,7 +60,7 @@ app.post("/webhook", webhookAuth, async (c) => {
     return c.json({ ok: true, skipped: true, reason: "status_not_subscribed" });
   }
 
-  const notified = await fanOutHeadless(mailer.sendMail, parsed.data);
+  const notified = await fanOutHeadless(sendMail, parsed.data);
   return c.json({ ok: true, notified });
 });
 
@@ -53,11 +69,10 @@ app.get("/test", webhookAuth, async (c) => {
   console.info("[headless:test] GET /test (after auth)", {
     emailRecipients: env.EMAIL_RECIPIENTS.length,
     slackWebhooks: env.SLACK_WEBHOOK_URLS.length,
-    smtpHost: env.SMTP_HOST,
-    smtpPort: env.SMTP_PORT,
+    emailProvider: env.EMAIL_RECIPIENTS.length > 0 ? env.EMAIL_PROVIDER : "(email disabled)",
   });
   try {
-    const report = await runHeadlessTest(mailer.sendMail);
+    const report = await runHeadlessTest(sendMail);
     console.info("[headless:test] GET /test response", {
       ms: Date.now() - started,
       emailAttempts: report.email.results.length,

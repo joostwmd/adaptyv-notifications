@@ -6,8 +6,7 @@
 # the blueprint (same keys as apps/headless/.env.example).
 #
 # Optional: EMAIL_RECIPIENTS and SLACK_WEBHOOK_URLS — leave blank if unused.
-# Note: packages/env/src/headless.ts still requires SMTP_* even for Slack-only runs;
-# use a placeholder provider or we can relax the schema in a follow-up.
+# When EMAIL_RECIPIENTS is empty, email provider variables are not required (Slack-only OK).
 #
 # PORT is injected by Render automatically.
 
@@ -36,14 +35,10 @@ services:
       - key: SLACK_WEBHOOK_URLS
         sync: false
 
-      # ── SMTP (required by env schema — set real values for your provider) ───
-      - key: SMTP_HOST
+      # ── Email via use-email (required when EMAIL_RECIPIENTS is non-empty) ─────
+      - key: EMAIL_PROVIDER
         sync: false
-      - key: SMTP_PORT
+      - key: EMAIL_FROM
         sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_FROM
+      - key: EMAIL_PROVIDER_KEY
         sync: false

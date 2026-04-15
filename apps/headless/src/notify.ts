@@ -176,7 +176,7 @@ async function sendTestEmail(sendMail: SendMailFn, to: string): Promise<void> {
       This is a test message from the <strong style="font-weight:600;">headless</strong> Notify server.
     </p>
     <p style="margin:0 0 14px;font-size:14px;line-height:1.55;color:${t.mutedForeground};">
-      If you received this email, SMTP and recipients are configured correctly.
+      If you received this email, your email provider and recipients are configured correctly.
     </p>
   `.trim();
 
@@ -191,7 +191,7 @@ async function sendTestEmail(sendMail: SendMailFn, to: string): Promise<void> {
     "",
     "This is a test message from the headless Foundry Notify server.",
     "",
-    "If you received this email, SMTP and recipients are configured correctly.",
+    "If you received this email, your email provider and recipients are configured correctly.",
   ].join("\n");
 
   await sendMail({ to, subject, html, text });
@@ -204,8 +204,8 @@ export async function runHeadlessTest(sendMail: SendMailFn): Promise<{
   console.info("[headless:test] runHeadlessTest start", {
     emailRecipients: env.EMAIL_RECIPIENTS.length,
     slackWebhooks: env.SLACK_WEBHOOK_URLS.length,
-    smtpHost: env.SMTP_HOST,
-    smtpPort: env.SMTP_PORT,
+    emailProvider:
+      env.EMAIL_RECIPIENTS.length > 0 ? env.EMAIL_PROVIDER : "(email disabled)",
   });
 
   if (env.EMAIL_RECIPIENTS.length === 0 && env.SLACK_WEBHOOK_URLS.length === 0) {
@@ -219,18 +219,18 @@ export async function runHeadlessTest(sendMail: SendMailFn): Promise<{
   for (const to of env.EMAIL_RECIPIENTS) {
     i += 1;
     const t0 = Date.now();
-    console.info("[headless:test] smtp sendMail start", {
+    console.info("[headless:test] email send start", {
       index: i,
       total: env.EMAIL_RECIPIENTS.length,
       toDomain: to.includes("@") ? to.split("@")[1] : "(no @)",
     });
     try {
       await sendTestEmail(sendMail, to);
-      console.info("[headless:test] smtp sendMail ok", { index: i, ms: Date.now() - t0 });
+      console.info("[headless:test] email send ok", { index: i, ms: Date.now() - t0 });
       emailResults.push({ to, ok: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("[headless:test] smtp sendMail fail", {
+      console.error("[headless:test] email send fail", {
         index: i,
         ms: Date.now() - t0,
         error: msg,

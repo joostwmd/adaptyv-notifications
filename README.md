@@ -22,16 +22,17 @@ The **headless** service is a single Node process configured entirely with **env
 
 - **Global subscription only** — `SUBSCRIBE_STATUSES` applies to the whole deployment. You cannot configure different status sets per email address or Slack channel (unlike the dashboard’s per-destination triggers).
 - **No persistence** — incoming webhooks are **not stored**; there is **no event log** and **no delivery log**.
-- **Limited observability** — with no record of deliveries, **error tracing and debugging** are harder (check provider logs, SMTP bounces, and Slack webhook responses only).
-- **SMTP on Render’s free web tier is blocked** — Free instances **cannot open outbound connections to SMTP ports** `25`, `465`, and `587` ([Render changelog](https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports)). The headless blueprint defaults to **`plan: free`** in [`render-headless.yaml`](render-headless.yaml), so **Nodemailer/SMTP will time out** there. **Use HTTPS-based sending instead** — see [Email on Render free (recommended path)](#email-on-render-free-recommended-path) below.
+- **Limited observability** — with no record of deliveries, **error tracing and debugging** are harder (check provider dashboards, bounces, and Slack webhook responses only).
 
-### Email on Render free (recommended path)
+### Email (headless): `use-email` on HTTPS
 
-**All outbound traffic stays on HTTPS (port 443)** if you send mail through a provider’s **HTTP API**, same class of egress as calling Slack webhooks — so it works on **Render free** where SMTP is blocked.
+Headless sends mail with **[SupersaasHQ/useEmail](https://github.com/SupersaasHQ/useEmail)** ([`use-email` on npm](https://www.npmjs.com/package/use-email)): one `send()`-style API over provider **HTTPS** endpoints (same egress class as Slack webhooks). The installed version supports **`resend`**, **`plunk`**, **`sendgrid`**, **`postmark`**, and **`zeptomail`**.
 
-The practical approach is **[SupersaasHQ/useEmail](https://github.com/SupersaasHQ/useEmail)** ([npm: `use-email`](https://www.npmjs.com/package/use-email)): one small `send()`-style API over **Resend**, SendGrid, Postmark, Mailgun, Plunk, Zeptomail, etc., each talking to the provider over **HTTPS** (set e.g. `RESEND_API_TOKEN` per their README).
+Configure **`EMAIL_PROVIDER`**, **`EMAIL_FROM`**, and a single **`EMAIL_PROVIDER_KEY`** (the app copies it into the `process.env` name that `use-email` expects for that provider). When **`EMAIL_RECIPIENTS`** is empty, you can omit those variables entirely (Slack-only deployments).
 
-Headless in this repo still uses **Nodemailer + SMTP** today; **wiring headless to `use-email` (e.g. `useEmail("resend")`) is the way to go** for email on the free plan without upgrading Render. Alternatively, **any paid Render instance type** restores outbound SMTP if you prefer to keep the current stack.
+**Migration from older headless SMTP:** replace `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` with `EMAIL_PROVIDER` + `EMAIL_FROM` + `EMAIL_PROVIDER_KEY` (for example Resend: `EMAIL_PROVIDER=resend`, `EMAIL_FROM` as your verified sender, `EMAIL_PROVIDER_KEY` as your Resend API key).
+
+**Render free tier:** outbound **SMTP** ports are blocked on free web services ([Render changelog](https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports)). Headless avoids SMTP and uses HTTPS only, so email works on **`plan: free`** in [`render-headless.yaml`](render-headless.yaml).
 
 Configuration is validated in [`packages/env/src/headless.ts`](packages/env/src/headless.ts). Local template: [`apps/headless/.env.example`](apps/headless/.env.example). [`render-headless.yaml`](render-headless.yaml) lists the same variables with `sync: false` so Render asks for them when you deploy the blueprint.
 
@@ -56,7 +57,7 @@ GET https://<your-notify-headless-host>/test?token=<WEBHOOK_TOKEN>
 
 ### If `/test` spins or returns 502 (e.g. on Render)
 
-Check **Render → service → Logs**. The server prints **`[headless:test]`** lines for each step (SMTP host/port, per-recipient `sendMail`, Slack webhook host, durations). A **502** often means the edge proxy gave up while **SMTP was still connecting** (wrong host/port/TLS, provider blocking datacenter IPs) or the handler ran too long. On **Render free**, SMTP timeouts are often **firewall-related** — see the **SMTP on Render’s free web tier** bullet under [Limitations](#limitations) above. Outbound **Slack** requests abort after **15s**; **SMTP** uses Nodemailer defaults of about **15s connection** and **25s socket** (see [`packages/nodemailer/src/mailer.ts`](packages/nodemailer/src/mailer.ts)) so the route should finish or fail within that window instead of hanging indefinitely.
+Check **Render → service → Logs**. The server prints **`[headless:test]`** lines for each step (email provider id, per-recipient sends, Slack webhook host, durations). A **502** often means the edge proxy gave up while the handler was still waiting on the **email provider HTTP API** or **Slack**. Outbound **Slack** requests abort after **15s**; provider HTTP calls should complete or fail within a similar window (check wrong API keys, rate limits, or network issues).
 
 ---
 
@@ -111,7 +112,7 @@ Inbound JSON is validated against an assumed Foundry-style schema ([`packages/sh
 
 ## Roadmap
 
-- [ ] **Headless email on free Render** — integrate HTTPS sending (recommended: [`use-email`](https://github.com/SupersaasHQ/useEmail) + e.g. Resend); see [Email on Render free (recommended path)](#email-on-render-free-recommended-path). Until then, SMTP-only headless needs a **paid** Render instance ([Limitations](#limitations)).
+- [x] **Headless email on free Render** — headless uses [`use-email`](https://github.com/SupersaasHQ/useEmail) over HTTPS; see [Email (headless): `use-email` on HTTPS](#email-headless-use-email-on-https).
 - [ ] **Stabilize the dashboard** — SPA + API + auth + DB path reliable for production.
 - [ ] **Production database guide (Turso)** — document Turso, optional `DATABASE_AUTH_TOKEN`, and migrations.
 - [ ] **Slack in dashboard** — data model allows Slack destinations; dashboard fan-out is email-only today; headless already supports Slack via env.
@@ -141,7 +142,7 @@ If you want **AI assistants** (Claude, Cursor, etc.) to query and manage Foundry
 | [`packages/auth`](packages/auth) | Better Auth (email OTP). |
 | [`packages/db`](packages/db) | Drizzle schema and migrations (LibSQL). |
 | [`packages/env`](packages/env) | Validated environment for server, headless, and Vite. |
-| [`packages/nodemailer`](packages/nodemailer) | Transactional HTML email via SMTP. |
+| [`packages/nodemailer`](packages/nodemailer) | Transactional HTML email (SMTP for dashboard; headless uses templates/types + [`use-email`](https://www.npmjs.com/package/use-email) for delivery). |
 | [`packages/shared`](packages/shared) | Shared webhook schema, statuses, auth middleware factory. |
 | [`packages/ui`](packages/ui) | Shared UI (shadcn-style components). |
 | [`scripts/emit-webhook.ts`](scripts/emit-webhook.ts) | Local synthetic webhook posts for testing. |
@@ -158,7 +159,7 @@ pnpm install
 
 ### Headless
 
-Copy env vars into `apps/headless/.env` (see [`packages/env/src/headless.ts`](packages/env/src/headless.ts)), then:
+Copy env vars into `apps/headless/.env` (see [`packages/env/src/headless.ts`](packages/env/src/headless.ts)). When `EMAIL_RECIPIENTS` is set, add `EMAIL_PROVIDER`, `EMAIL_FROM`, and `EMAIL_PROVIDER_KEY`. Then:
 
 ```bash
 pnpm dev:headless

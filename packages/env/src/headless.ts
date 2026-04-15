@@ -6,6 +6,17 @@ import { z } from "zod";
 
 const statusList = EXPERIMENT_STATUSES as readonly string[];
 
+/** Providers supported by the installed `use-email` package (HTTPS APIs). */
+export const HEADLESS_EMAIL_PROVIDERS = [
+  "resend",
+  "plunk",
+  "sendgrid",
+  "postmark",
+  "zeptomail",
+] as const;
+
+export type HeadlessEmailProvider = (typeof HEADLESS_EMAIL_PROVIDERS)[number];
+
 function parseSubscribeStatuses(raw: string): ExperimentStatus[] {
   const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
   if (parts.length === 0) {
@@ -28,27 +39,65 @@ function parseCsvEmails(s: string): string[] {
   return s.split(",").map((x) => x.trim()).filter(Boolean);
 }
 
+const headlessServerShape = {
+  WEBHOOK_TOKEN: z.string().min(1),
+  SUBSCRIBE_STATUSES: z.string().min(1).transform(parseSubscribeStatuses),
+  EMAIL_RECIPIENTS: z
+    .string()
+    .optional()
+    .default("")
+    .transform((s) => parseCsvEmails(s)),
+  SLACK_WEBHOOK_URLS: z
+    .string()
+    .optional()
+    .default("")
+    .transform((s) => parseCsvEmails(s)),
+  EMAIL_PROVIDER: z.enum(HEADLESS_EMAIL_PROVIDERS).optional(),
+  EMAIL_FROM: z.string().min(1).optional(),
+  EMAIL_PROVIDER_KEY: z.string().min(1).optional(),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+};
+
 export const env = createEnv({
-  server: {
-    WEBHOOK_TOKEN: z.string().min(1),
-    SUBSCRIBE_STATUSES: z.string().min(1).transform(parseSubscribeStatuses),
-    EMAIL_RECIPIENTS: z
-      .string()
-      .optional()
-      .default("")
-      .transform((s) => parseCsvEmails(s)),
-    SLACK_WEBHOOK_URLS: z
-      .string()
-      .optional()
-      .default("")
-      .transform((s) => parseCsvEmails(s)),
-    SMTP_HOST: z.string().min(1),
-    SMTP_PORT: z.coerce.number().default(465),
-    SMTP_USER: z.string().min(1),
-    SMTP_PASS: z.string().min(1),
-    SMTP_FROM: z.string().min(1),
-    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  },
+  server: headlessServerShape,
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
+  createFinalSchema: (shape) =>
+    z
+      .object({
+        WEBHOOK_TOKEN: shape.WEBHOOK_TOKEN,
+        SUBSCRIBE_STATUSES: shape.SUBSCRIBE_STATUSES,
+        EMAIL_RECIPIENTS: shape.EMAIL_RECIPIENTS,
+        SLACK_WEBHOOK_URLS: shape.SLACK_WEBHOOK_URLS,
+        EMAIL_PROVIDER: shape.EMAIL_PROVIDER,
+        EMAIL_FROM: shape.EMAIL_FROM,
+        EMAIL_PROVIDER_KEY: shape.EMAIL_PROVIDER_KEY,
+        NODE_ENV: shape.NODE_ENV,
+      })
+      .superRefine((data, ctx) => {
+        if (data.EMAIL_RECIPIENTS.length === 0) {
+          return;
+        }
+        if (!data.EMAIL_PROVIDER) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "EMAIL_PROVIDER is required when EMAIL_RECIPIENTS is non-empty",
+            path: ["EMAIL_PROVIDER"],
+          });
+        }
+        if (!data.EMAIL_FROM) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "EMAIL_FROM is required when EMAIL_RECIPIENTS is non-empty",
+            path: ["EMAIL_FROM"],
+          });
+        }
+        if (!data.EMAIL_PROVIDER_KEY) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "EMAIL_PROVIDER_KEY is required when EMAIL_RECIPIENTS is non-empty",
+            path: ["EMAIL_PROVIDER_KEY"],
+          });
+        }
+      }),
 });
