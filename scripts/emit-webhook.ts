@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-config({ path: path.resolve(__dirname, "../apps/dashboard/server/.env") });
+config({ path: path.resolve(__dirname, "./.env") });
 
 const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
 const BASE_URL = process.env.WEBHOOK_TEST_URL ?? "http://localhost:3000";
