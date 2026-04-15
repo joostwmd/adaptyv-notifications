@@ -1,129 +1,163 @@
 # Adaptyv Notifications
 
-A small **webhook consumer and notification hub** for [Adaptyv Foundry](https://foundry.adaptyvbio.com): point Foundry’s experiment webhooks at your deployment and get **email** (and optionally **Slack**) when experiments change status.
+**Headless Foundry Notify** — a small **webhook consumer** for [Adaptyv Foundry](https://foundry.adaptyvbio.com). Point Foundry’s experiment webhooks at your deployment; when an experiment’s status changes, the service can send **email** (HTTPS via [use-email](https://www.npmjs.com/package/use-email)), **Slack** (incoming webhooks), or both. Everything is configured with **environment variables**; there is **no database**.
 
-> **Dashboard status:** The full **dashboard** experience (React SPA + database-backed API with per-destination rules, event history, and delivery tracking) is **not working reliably yet** and should be treated as **experimental**. For a deployment you can use today, prefer the **headless** variant below.
-
-> **Not affiliated with or endorsed by Adaptyv Bio.** This is an independent project to make Foundry-style webhook workflows easier for teams who want alerts without building their own glue service.
+> **Not affiliated with or endorsed by Adaptyv Bio.** Independent tooling for teams who want alerts without building their own glue service.
 
 ---
 
-## Headless variant (recommended)
+## What this project is
 
-The **headless** service is a single Node process configured entirely with **environment variables**. It exposes `POST /webhook` (same Foundry contract as the full app), optional `GET /test?token=…` to verify email/Slack, and `GET /health`.
+The **primary product** in this repository is the **headless** service in [`apps/headless`](apps/headless): one Node process, one HTTP server, env-only configuration.
 
-### Benefits
+| You get | Details |
+| --- | --- |
+| **Endpoints** | `POST /webhook` (Foundry-style JSON + `?token=`), `GET /test?token=…` (smoke test email + Slack), `GET /health` |
+| **Channels** | Optional comma-separated **emails** and optional comma-separated **Slack incoming webhook URLs** |
+| **Subscription** | Global filter: only `new_status` values listed in `SUBSCRIBE_STATUSES` trigger notifications |
+| **Ops** | Single Docker image; [Render blueprint](render-headless.yaml) for a one-service deploy |
 
-- **No Turso / LibSQL database** — nothing to provision or migrate; no `DATABASE_URL`.
-- **Simple ops** — one Docker image, one web service on Render, env vars only.
-- **Email + Slack** — comma-separated recipients and Slack incoming webhook URLs in env.
-
-### Limitations
-
-- **Global subscription only** — `SUBSCRIBE_STATUSES` applies to the whole deployment. You cannot configure different status sets per email address or Slack channel (unlike the dashboard’s per-destination triggers).
-- **No persistence** — incoming webhooks are **not stored**; there is **no event log** and **no delivery log**.
-- **Limited observability** — with no record of deliveries, **error tracing and debugging** are harder (check provider dashboards, bounces, and Slack webhook responses only).
-
-### Email (headless): `use-email` on HTTPS
-
-Headless sends mail with **[SupersaasHQ/useEmail](https://github.com/SupersaasHQ/useEmail)** ([`use-email` on npm](https://www.npmjs.com/package/use-email)): one `send()`-style API over provider **HTTPS** endpoints (same egress class as Slack webhooks). The installed version supports **`resend`**, **`plunk`**, **`sendgrid`**, **`postmark`**, and **`zeptomail`**.
-
-Configure **`EMAIL_PROVIDER`**, **`EMAIL_FROM`**, and a single **`EMAIL_PROVIDER_KEY`** (the app copies it into the `process.env` name that `use-email` expects for that provider). When **`EMAIL_RECIPIENTS`** is empty, you can omit those variables entirely (Slack-only deployments).
-
-**Migration from older headless SMTP:** replace `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` with `EMAIL_PROVIDER` + `EMAIL_FROM` + `EMAIL_PROVIDER_KEY` (for example Resend: `EMAIL_PROVIDER=resend`, `EMAIL_FROM` as your verified sender, `EMAIL_PROVIDER_KEY` as your Resend API key).
-
-**Render free tier:** outbound **SMTP** ports are blocked on free web services ([Render changelog](https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports)). Headless avoids SMTP and uses HTTPS only, so email works on **`plan: free`** in [`render-headless.yaml`](render-headless.yaml).
-
-Configuration is validated in [`packages/env/src/headless.ts`](packages/env/src/headless.ts). Local template: [`apps/headless/.env.example`](apps/headless/.env.example). [`render-headless.yaml`](render-headless.yaml) lists the same variables with `sync: false` so Render asks for them when you deploy the blueprint.
-
-### Deploy headless to Render (one click)
-
-[![Deploy headless to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/joostwmd/adaptyv-notifications)
-
-**Important:** After you connect the repo, Render defaults to the root **`render.yaml`** (dashboard stack). For headless, set **Blueprint path** to **`render-headless.yaml`** on the Blueprint setup screen ([docs: custom blueprint path](https://render.com/docs/infrastructure-as-code#setup)). You will be prompted for each variable in that file (same set as [`apps/headless/.env.example`](apps/headless/.env.example)). Optional `EMAIL_RECIPIENTS` / `SLACK_WEBHOOK_URLS` can be left empty in the dashboard if you only use the other channel.
-
-### Foundry webhook URL (headless)
-
-```http
-POST https://<your-notify-headless-host>/webhook?token=<WEBHOOK_TOKEN>
-Content-Type: application/json
-```
-
-Verify setup:
-
-```http
-GET https://<your-notify-headless-host>/test?token=<WEBHOOK_TOKEN>
-```
-
-### If `/test` spins or returns 502 (e.g. on Render)
-
-Check **Render → service → Logs**. The server prints **`[headless:test]`** lines for each step (email provider id, per-recipient sends, Slack webhook host, durations). A **502** often means the edge proxy gave up while the handler was still waiting on the **email provider HTTP API** or **Slack**. Outbound **Slack** requests abort after **15s**; provider HTTP calls should complete or fail within a similar window (check wrong API keys, rate limits, or network issues).
+**Tradeoffs:** no per-recipient rules (unlike a future dashboard), no stored event or delivery history, debugging relies on logs and your email/Slack provider.
 
 ---
 
-## Dashboard variant (experimental)
+## Configuration (environment variables)
 
-The intended experience is a **Render-ready pair**: a Node API (Hono + tRPC) and a static React SPA, defined in [`render.yaml`](render.yaml). The API image is built from [`apps/dashboard/Dockerfile`](apps/dashboard/Dockerfile) (build context: repo root). Root [`.dockerignore`](.dockerignore) is a symlink to [`apps/dashboard/.dockerignore`](apps/dashboard/.dockerignore).
-
-[![Deploy dashboard to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/joostwmd/adaptyv-notifications)
-
-This button uses the default **`render.yaml`** at the repo root. After the first deploy you still need a remote **LibSQL / [Turso](https://turso.tech)** URL, **`CORS_ORIGIN`** matching the static site, **SMTP**, and a **`pnpm db:migrate`** (or equivalent) on the API service. **Expect rough edges** until the dashboard stack is stabilized.
-
-`GET /health` on the API returns `{ "status": "ok" }` when the process is up.
-
-### Foundry webhook URL (dashboard API)
-
-```http
-POST https://<your-notify-api-host>/webhook?token=<WEBHOOK_TOKEN>
-Content-Type: application/json
-```
-
-When the dashboard works, it can show the exact URL after sign-in.
-
-### Dashboard environment variables
+Headless reads **process environment** variables — locally from **`apps/headless/.env`** (see [Local development](#local-development-headless)), on a host from its **dashboard / secrets UI** (see [Deployment](#deployment)). Names and rules are validated in [`packages/env/src/headless.ts`](packages/env/src/headless.ts); copy from [`apps/headless/.env.example`](apps/headless/.env.example).
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `DATABASE_URL` | Always | LibSQL URL (local file for dev; Turso / remote for production). |
-| `BETTER_AUTH_SECRET` | Always | At least 32 characters. |
-| `BETTER_AUTH_URL` | Always | Public base URL of the API (where `/api/auth` and `/trpc` are served). |
-| `CORS_ORIGIN` | Always | Exact origin of the SPA (scheme + host, no path). |
-| `WEBHOOK_TOKEN` | Always | Secret query param for `POST /webhook`. |
-| `SMTP_HOST` | Always | SMTP hostname. |
-| `SMTP_PORT` | Always | SMTP port (e.g. `465`). |
-| `SMTP_USER` | Always | SMTP username. |
-| `SMTP_PASS` | Always | SMTP password or API key. |
-| `SMTP_FROM` | Always | From address (verified with your provider). |
-| `ALLOWED_EMAIL_DOMAINS` | No | Comma-separated list; if set, sign-in is restricted to those domains. |
-| `NODE_ENV` | No | `development` \| `production` \| `test` (defaults to `development`). |
-| `VITE_SERVER_URL` | Web build | API public origin (no `/trpc` suffix); set on the static site build. |
+| `WEBHOOK_TOKEN` | **Yes** | Shared secret. Foundry (or any client) must pass it as the **`token` query parameter** on `/webhook` and `/test`. Use a long random string. |
+| `SUBSCRIBE_STATUSES` | **Yes** | Comma-separated Foundry statuses. A webhook is **only** processed when its **`new_status`** appears in this list (otherwise the server responds with `skipped: true` and sends nothing). Valid values: `draft`, `waiting_for_confirmation`, `quote_sent`, `waiting_for_materials`, `in_queue`, `in_production`, `data_analysis`, `in_review`, `done`, `canceled`. |
+| `EMAIL_RECIPIENTS` | No | Comma-separated recipient addresses. If **empty**, email is disabled and **`EMAIL_*` provider variables are not required** (Slack-only is valid). |
+| `SLACK_WEBHOOK_URLS` | No | Comma-separated **Slack Incoming Webhook** URLs (see [Slack: incoming webhooks](#slack-incoming-webhooks)). If empty, Slack is disabled. |
+| `EMAIL_PROVIDER` | When email is used | One of: `resend`, `plunk`, `sendgrid`, `postmark`, `zeptomail` ([use-email](https://github.com/SupersaasHQ/useEmail) providers over HTTPS). |
+| `EMAIL_FROM` | When email is used | From address verified with your provider. |
+| `EMAIL_PROVIDER_KEY` | When email is used | API key for the chosen provider (the app maps this to the env name `use-email` expects). |
+| `NODE_ENV` | No | `development`, `production`, or `test` (default `development`). |
 
-Validated in [`packages/env/src/server.ts`](packages/env/src/server.ts). Template: [`.env.example`](.env.example) → `apps/dashboard/server/.env`.
+### Slack: incoming webhooks
+
+Headless uses Slack’s **Incoming Webhooks** feature: each URL is a long `https://hooks.slack.com/services/...` secret that posts messages into **one Slack channel** (the channel you picked when creating the webhook).
+
+#### URL strategy
+
+| Approach | When to use it |
+| --- | --- |
+| **One webhook URL** | One channel (e.g. `#foundry-alerts`) gets every experiment notification. Simplest setup. |
+| **Several URLs in `SLACK_WEBHOOK_URLS`** | Comma-separated list, **no spaces** unless they are inside a single URL (avoid commas inside URLs). Each URL delivers to its own channel — useful if different channels should see the same events (e.g. `#lab` + `#ops`). |
+| **Separate deployments** | Different Foundry projects or environments → different services each with their own `SLACK_WEBHOOK_URLS` and/or `WEBHOOK_TOKEN`. |
+
+Treat each webhook URL like a **password**: anyone with the URL can post to that channel. Rotate it in Slack if it leaks; update the env var on your host and restart or redeploy.
+
+#### Creating webhook URLs in Slack
+
+1. Open [api.slack.com/apps](https://api.slack.com/apps) and sign in.
+2. **Create New App** → **From scratch** → choose a name and **workspace**.
+3. In the app, enable **Incoming Webhooks** and turn the toggle **On**.
+4. **Add New Webhook to Workspace** → pick the **channel** → authorize.
+5. Copy the **Webhook URL** into `SLACK_WEBHOOK_URLS` in `apps/headless/.env` (one URL, or several comma-separated).
+
+Optional: create **multiple** webhooks (same app or different apps) if you need multiple channels.
 
 ---
 
-## Motivation
+## Local development (headless)
 
-Foundry can send **experiment lifecycle webhooks**, but teams that want **internal notifications** still need something to validate payloads, fan out to email or chat, and (optionally) configure rules. This repo provides a **headless** path without a database, and an eventual **dashboard** path with richer configuration—once that stack is stable.
+First-time **setup** to run the service on your machine:
 
-Inbound JSON is validated against an assumed Foundry-style schema ([`packages/shared/src/webhook-schema.ts`](packages/shared/src/webhook-schema.ts)); if Foundry’s shape changes, update the schema and redeploy.
+```bash
+pnpm install
+cp apps/headless/.env.example apps/headless/.env
+# Edit apps/headless/.env — see [Configuration](#configuration-environment-variables) and [Slack](#slack-incoming-webhooks)
+pnpm dev:headless
+```
+
+- API default: [http://localhost:3000](http://localhost:3000) unless `PORT` is set.
+
+**Smoke test** (email + Slack, if configured):
+
+```http
+GET http://localhost:3000/test?token=<WEBHOOK_TOKEN>
+```
+
+You should get JSON with per-recipient results and see a short test message in Slack.
+
+### Synthetic webhook script
+
+From the repo root:
+
+```bash
+pnpm webhook:test
+```
+
+Loads **`scripts/.env`** (create it with at least `WEBHOOK_TOKEN` matching headless). Optional: `WEBHOOK_TEST_URL` (defaults to `http://localhost:3000`).
+
+**Important:** Random payloads use random `new_status` values. Only statuses in **`SUBSCRIBE_STATUSES`** trigger fan-out. For predictable tests:
+
+```bash
+pnpm webhook:test -- --from in_production --to done
+```
+
+(only works if `done` is in `SUBSCRIBE_STATUSES`).
+
+---
+
+## Deployment
+
+Headless is one **Docker** image ([`apps/headless/Dockerfile`](apps/headless/Dockerfile)); production is “run the container (or Node bundle) with the same env vars as in [Configuration](#configuration-environment-variables).”
+
+### Render (recommended)
+
+[![Deploy headless to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/joostwmd/adaptyv-notifications)
+
+1. Use the button above and connect this repo.
+2. Set **Blueprint path** to **`render-headless.yaml`** (Render otherwise defaults to root **`render.yaml`**, which is the experimental dashboard stack — [custom blueprint path](https://render.com/docs/infrastructure-as-code#setup)).
+3. Enter each variable in the Render UI when prompted (same keys as [`apps/headless/.env.example`](apps/headless/.env.example) and [`render-headless.yaml`](render-headless.yaml)).
+
+**Render free tier:** outbound **SMTP** ports are blocked on free web services ([Render changelog](https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports)). Headless uses **HTTPS email APIs** (`use-email`) only, so email works on **`plan: free`** in `render-headless.yaml`.
+
+### Foundry webhook URL (production)
+
+After deploy, point Foundry at your public host (replace host and token):
+
+```http
+POST https://<your-host>/webhook?token=<WEBHOOK_TOKEN>
+Content-Type: application/json
+```
+
+Payload shape is validated against [`packages/shared/src/webhook-schema.ts`](packages/shared/src/webhook-schema.ts). If Foundry’s JSON changes, update the schema and redeploy.
+
+### Production-style build (any host)
+
+```bash
+pnpm --filter headless build
+node apps/headless/dist/index.mjs
+```
+
+Use **HTTPS** in front of the service in production (Render terminates TLS for you). Set `PORT` if the platform injects it.
+
+---
+
+## If `/test` or `/webhook` is slow or returns 502
+
+Check service logs. Headless logs **`[headless:test]`** during `GET /test`. Slack `fetch` uses a **15s** timeout. Email uses your provider’s HTTP API; failures usually show in the JSON `errors` array on successful HTTP responses, or in logs.
 
 ---
 
 ## Roadmap
 
-- [x] **Headless email on free Render** — headless uses [`use-email`](https://github.com/SupersaasHQ/useEmail) over HTTPS; see [Email (headless): `use-email` on HTTPS](#email-headless-use-email-on-https).
-- [ ] **Stabilize the dashboard** — SPA + API + auth + DB path reliable for production.
-- [ ] **Production database guide (Turso)** — document Turso, optional `DATABASE_AUTH_TOKEN`, and migrations.
-- [ ] **Slack in dashboard** — data model allows Slack destinations; dashboard fan-out is email-only today; headless already supports Slack via env.
-- [ ] **Background jobs and retries** — queue-backed delivery for both variants.
-- [ ] **Stronger webhook contract** — fixtures or docs from Adaptyv would reduce payload drift risk.
+- [x] Headless email over HTTPS (`use-email`) for Render free compatibility.
+- [ ] Stabilize optional dashboard stack (see below).
+- [ ] Slack + richer rules in dashboard fan-out.
+- [ ] Background jobs / retries for delivery.
+- [ ] Stronger webhook contract (fixtures or upstream docs).
 
 ---
 
 ## Also built: Adaptyv Foundry MCP
 
-If you want **AI assistants** (Claude, Cursor, etc.) to query and manage Foundry experiments via **MCP tools**, see **[joostwmd/adaptyv-mcp](https://github.com/joostwmd/adaptyv-mcp)**.
+For **AI assistants** (Claude, Cursor, etc.) querying Foundry via **MCP**, see **[joostwmd/adaptyv-mcp](https://github.com/joostwmd/adaptyv-mcp)**.
 
 ---
 
@@ -131,70 +165,23 @@ If you want **AI assistants** (Claude, Cursor, etc.) to query and manage Foundry
 
 | Path | Description |
 | --- | --- |
-| [`apps/dashboard/web`](apps/dashboard/web) | React SPA (Vite, TanStack Router, tRPC client). |
-| [`apps/dashboard/server`](apps/dashboard/server) | Node entry: Hono + tRPC + webhook route. |
-| [`apps/dashboard/Dockerfile`](apps/dashboard/Dockerfile) | Production image for the dashboard API. |
-| [`apps/dashboard/.dockerignore`](apps/dashboard/.dockerignore) | Docker ignore rules; root [`.dockerignore`](.dockerignore) symlinks here (context root). |
-| [`apps/headless`](apps/headless) | Env-only webhook server (email + Slack, no DB). |
-| [`render.yaml`](render.yaml) | Render blueprint for dashboard API + static web. |
-| [`render-headless.yaml`](render-headless.yaml) | Render blueprint for headless service only. |
-| [`packages/api`](packages/api) | HTTP app, routers, webhook handler, notification fan-out. |
-| [`packages/auth`](packages/auth) | Better Auth (email OTP). |
-| [`packages/db`](packages/db) | Drizzle schema and migrations (LibSQL). |
-| [`packages/env`](packages/env) | Validated environment for server, headless, and Vite. |
-| [`packages/nodemailer`](packages/nodemailer) | Transactional HTML email (SMTP for dashboard; headless uses templates/types + [`use-email`](https://www.npmjs.com/package/use-email) for delivery). |
-| [`packages/shared`](packages/shared) | Shared webhook schema, statuses, auth middleware factory. |
-| [`packages/ui`](packages/ui) | Shared UI (shadcn-style components). |
-| [`scripts/emit-webhook.ts`](scripts/emit-webhook.ts) | Local synthetic webhook posts for testing. |
+| [`apps/headless`](apps/headless) | **Main product:** env-only webhook server (email + Slack, no DB). |
+| [`render-headless.yaml`](render-headless.yaml) | Render blueprint for headless only. |
+| [`packages/shared`](packages/shared) | Webhook schema, statuses, webhook auth helper. |
+| [`packages/env`](packages/env) | Validated env (headless + dashboard). |
+| [`scripts/emit-webhook.ts`](scripts/emit-webhook.ts) | Local synthetic `POST /webhook` for testing. |
+| [`apps/dashboard/*`](apps/dashboard) | **Experimental** SPA + API (see next section). |
+| [`render.yaml`](render.yaml) | Blueprint for dashboard API + static site (not the default path for headless deploys). |
+| [`packages/api`](packages/api), [`packages/db`](packages/db), [`packages/auth`](packages/auth) | Dashboard-only stack pieces. |
 
 Bootstrapped from [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack).
 
 ---
 
-## Local development
+## Dashboard variant (experimental, not the main product)
 
-```bash
-pnpm install
-```
+There is also a **dashboard** direction in this repo: a React SPA plus a **Hono + tRPC** API with **Better Auth**, **per-destination rules**, and persistence in a **third-party LibSQL database** (e.g. [Turso](https://turso.tech)). It is **not stable yet** — more moving parts (database migrations, CORS, auth secrets, SMTP for the dashboard path today), and not recommended for production the way headless is.
 
-### Headless
+If you want to explore it: code under [`apps/dashboard`](apps/dashboard), API and fan-out in [`packages/api`](packages/api), schema in [`packages/db`](packages/db). Deploy artifacts are described in [`render.yaml`](render.yaml) (no deploy button here by design). Environment details: [`packages/env/src/server.ts`](packages/env/src/server.ts) and [`.env.example`](.env.example) / `apps/dashboard/server/.env`.
 
-Copy env vars into `apps/headless/.env` (see [`packages/env/src/headless.ts`](packages/env/src/headless.ts)). When `EMAIL_RECIPIENTS` is set, add `EMAIL_PROVIDER`, `EMAIL_FROM`, and `EMAIL_PROVIDER_KEY`. Then:
-
-```bash
-pnpm dev:headless
-```
-
-Default port `3000` unless `PORT` is set. Use `GET /test?token=…` to exercise email/Slack.
-
-### Dashboard (experimental)
-
-**Server** — [`.env.example`](.env.example) → `apps/dashboard/server/.env`.
-
-**Web** — `apps/dashboard/web/.env` with `VITE_SERVER_URL=http://localhost:3000`.
-
-```bash
-pnpm run db:push
-pnpm run dev
-```
-
-- App: [http://localhost:3001](http://localhost:3001)
-- API: [http://localhost:3000](http://localhost:3000)
-
-Test webhooks against the dashboard API (requires `WEBHOOK_TOKEN` in `apps/dashboard/server/.env`):
-
-```bash
-pnpm webhook:test
-```
-
-Optional: `WEBHOOK_TEST_URL` (e.g. point at headless).
-
-### Production-style builds
-
-**Dashboard API:** `pnpm --filter server build` then `node apps/dashboard/server/dist/index.mjs`.
-
-**Web:** `VITE_SERVER_URL=https://your-api.example.com pnpm --filter web build` — output in `apps/dashboard/web/dist`.
-
-**Headless:** `pnpm --filter headless build` then `node apps/headless/dist/index.mjs`.
-
-In production, use **HTTPS** (Render does by default). Better Auth uses `sameSite: "none"` and `secure: true` for cookies in production when `NODE_ENV=production`.
+When you need **one global subscription**, **no DB**, and **Slack + HTTPS email**, use **headless** above.
