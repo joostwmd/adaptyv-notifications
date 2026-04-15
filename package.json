@@ -1,6 +1,7 @@
 {
   "name": "notify",
   "private": true,
+  "license": "MIT",
   "workspaces": [
     "apps/dashboard/*",
     "apps/headless",

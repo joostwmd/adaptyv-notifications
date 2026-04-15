@@ -4,6 +4,8 @@
 
 > **Not affiliated with or endorsed by Adaptyv Bio.** Independent tooling for teams who want alerts without building their own glue service.
 
+Licensed under the [MIT License](LICENSE).
+
 ---
 
 ## What this project is
